@@ -1,0 +1,104 @@
+# Ambiente de desenvolvimento local
+# Uso: docker compose up --build
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    restart: "no"
+    working_dir: /var/www
+    environment:
+      APP_ENV: local
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: "true"
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-auth_dev}
+      DB_USERNAME: ${DB_USERNAME:-auth}
+      DB_PASSWORD: ${DB_PASSWORD:-auth}
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@agrofly.com}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stack}
+      LOG_LEVEL: debug
+      INSTALL_COMPOSER_DEPS: "true"
+      INSTALL_NPM_DEPS: "true"
+      RUN_MIGRATIONS: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/var/www
+      - composer_cache:/tmp/composer-cache
+      - vendor:/var/www/vendor
+      - node_modules:/var/www/node_modules
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1',9000)===false?1:0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: "no"
+    ports:
+      - "80:80"
+    volumes:
+      - .:/var/www:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - internal
+
+  postgres:
+    image: postgres:17
+    restart: "no"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-auth_dev}
+      POSTGRES_USER: ${DB_USERNAME:-auth}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-auth}
+    ports:
+      - "${DB_EXPOSE_PORT:-5433}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-auth} -d ${DB_DATABASE:-auth_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    restart: "no"
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  composer_cache:
+  vendor:
+  node_modules:
