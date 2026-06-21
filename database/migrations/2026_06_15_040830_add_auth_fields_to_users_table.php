@@ -13,8 +13,6 @@ return new class extends Migration
             $table->boolean('deve_alterar_senha')->default(true)->after('status');
             $table->timestamp('ultimo_acesso_em')->nullable()->after('deve_alterar_senha');
             $table->timestamp('primeiro_acesso_em')->nullable()->after('ultimo_acesso_em');
-            $table->timestamp('convite_enviado_em')->nullable()->after('primeiro_acesso_em');
-            $table->uuid('criado_por')->nullable()->after('convite_enviado_em');
             $table->softDeletes();
         });
     }
@@ -25,10 +23,8 @@ return new class extends Migration
             $table->dropColumn([
                 'status',
                 'deve_alterar_senha',
-                'ultimo_acesso_em',
+                'ultimo_acesso_em', 
                 'primeiro_acesso_em',
-                'convite_enviado_em',
-                'criado_por',
             ]);
             $table->dropSoftDeletes();
         });

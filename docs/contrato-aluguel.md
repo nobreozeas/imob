@@ -1,1484 +1,956 @@
-# Módulo de Contratos de Locação — Fluxo Atualizado
+# Módulo de Contratos de Locação — ImobGestor
 
-## Sistema de Gestão Imobiliária
+## 1. Visão Geral
 
-Este documento descreve o fluxo atualizado do módulo de **Contratos de Locação** para o MVP do Sistema de Gestão Imobiliária.
+O módulo de **Contratos de Locação** será responsável por gerenciar todo o ciclo de vida dos contratos de aluguel dentro do sistema ImobGestor.
 
-O contrato será o ponto central da operação de aluguel, conectando:
+Esse módulo será integrado diretamente com:
 
-- Imóvel
-- Proprietário
-- Inquilino
-- Corretor
-- Encargos
-- Caução
-- Parcelas de aluguel
-- Recebimentos
-- Multas
-- Repasses ao proprietário
-- Movimentações financeiras
+* Gestão de Imóveis;
+* Gestão de Clientes;
+* Gestão Financeira;
+* Dashboard;
+* Notificações;
+* Controle de permissões;
+* Documentos e anexos.
 
----
+O contrato de locação representa o vínculo formal entre um **imóvel disponível**, um **proprietário** e um **inquilino**.
 
-# 1. Objetivo do módulo
+No ImobGestor, proprietários e inquilinos não serão cadastros separados. Ambos serão registros da entidade **Cliente**, diferenciados pelos seus papéis no sistema.
 
-Permitir que a imobiliária cadastre, acompanhe e gerencie contratos de locação de forma simples, segura e integrada ao financeiro.
+Um cliente poderá ser:
 
-O módulo deve permitir:
+* apenas proprietário;
+* apenas inquilino;
+* proprietário e inquilino ao mesmo tempo.
 
-- Criar contratos de locação.
-- Selecionar apenas imóveis disponíveis.
-- Vincular imóvel, proprietário, inquilino e corretor.
-- Definir dados financeiros do aluguel.
-- Definir multa por atraso.
-- Definir juros por atraso.
-- Definir multa por quebra de contrato.
-- Definir encargos contratuais.
-- Registrar caução/garantia.
-- Gerar parcelas de aluguel.
-- Registrar pagamentos.
-- Calcular taxa da imobiliária.
-- Gerar repasses ao proprietário.
-- Controlar rescisões e renovações.
-- Manter histórico completo do contrato.
+## 2. Objetivo do Módulo
 
----
+Criar uma área para cadastro, acompanhamento e controle dos contratos de aluguel da imobiliária, permitindo que a equipe gerencie:
 
-# 2. Regra principal sobre imóveis
+* dados do contrato;
+* imóvel locado;
+* proprietário;
+* inquilino;
+* período de vigência;
+* valor do aluguel;
+* caução;
+* multas;
+* encargos;
+* repasses ao proprietário;
+* vencimentos;
+* situação do contrato;
+* histórico de eventos;
+* geração futura de financeiro e notificações.
 
-Apenas imóveis com status **Disponível** poderão ser usados na criação de um novo contrato.
+## 3. Premissas
 
-## Status permitidos para seleção
+O módulo deve considerar as seguintes premissas:
 
-```text
-Disponível
-```
+* Apenas imóveis com status **Disponível** poderão ser usados em novos contratos.
+* Um imóvel não pode possuir mais de um contrato ativo ao mesmo tempo.
+* Todo contrato deve estar vinculado a um imóvel.
+* Todo contrato deve estar vinculado a um proprietário.
+* Todo contrato deve estar vinculado a um inquilino.
+* O proprietário será obtido a partir do imóvel selecionado.
+* O inquilino deverá ser um cliente ativo com papel de **Inquilino**.
+* O proprietário deverá ser um cliente ativo com papel de **Proprietário**.
+* A ativação do contrato deve alterar o status do imóvel para **Alugado**.
+* O encerramento do contrato deve permitir definir se o imóvel voltará para **Disponível** ou irá para **Em manutenção**.
+* A exclusão física de contratos deve ser evitada. O sistema deve priorizar cancelamento, encerramento ou rescisão.
 
-## Status bloqueados para contrato
+## 4. Conceitos Principais
 
-```text
-Reservado
-Alugado
-Inativo
-```
+### 4.1 Contrato
 
-## Regras
+Representa o acordo de locação de um imóvel entre proprietário e inquilino, intermediado pela imobiliária.
 
-```text
-1. O sistema deve listar apenas imóveis com status disponível na criação do contrato.
-2. Um imóvel alugado não pode ser vinculado a outro contrato ativo.
-3. Ao ativar o contrato, o imóvel deve mudar para status alugado.
-4. Contrato em rascunho não altera o status do imóvel.
-5. Ao encerrar o contrato, o imóvel pode voltar para disponível ou inativo.
-6. Ao cancelar contrato não iniciado, o imóvel pode voltar para disponível.
-```
+### 4.2 Imóvel
 
----
+Bem disponível para locação. Deve estar previamente cadastrado no sistema.
 
-# 3. Fluxo geral do contrato
+### 4.3 Proprietário
 
-```text
-Selecionar imóvel disponível
-   ↓
-Selecionar ou cadastrar inquilino
-   ↓
-Informar dados principais do contrato
-   ↓
-Configurar multas e regras de pagamento
-   ↓
-Configurar encargos contratuais
-   ↓
-Configurar financeiro e caução
-   ↓
-Revisar dados
-   ↓
-Salvar como rascunho ou ativar contrato
-   ↓
-Gerar parcelas de aluguel
-   ↓
-Registrar pagamentos
-   ↓
-Gerar repasses ao proprietário
-   ↓
-Controlar renovação ou rescisão
-```
+Cliente que possui o papel de proprietário e está vinculado ao imóvel.
 
----
+### 4.4 Inquilino
 
-# 4. Status do contrato
+Cliente que possui o papel de inquilino e será vinculado ao contrato.
 
-```text
-rascunho
-ativo
-vencido
-encerrado
-cancelado
-```
+### 4.5 Caução
 
-## Rascunho
+Garantia financeira vinculada ao contrato. Pode ser usada como segurança em caso de inadimplência, danos ao imóvel ou outras obrigações previstas.
 
-Contrato ainda em elaboração.
+### 4.6 Encargos
 
-Regras:
+Valores adicionais relacionados à locação, como:
 
-```text
-- Não gera parcelas.
-- Não altera o status do imóvel.
-- Permite edição completa.
-```
+* condomínio;
+* IPTU;
+* água;
+* energia;
+* internet;
+* taxa de lixo;
+* outros encargos.
 
-## Ativo
+### 4.7 Repasse
 
-Contrato válido e em execução.
+Valor que será repassado ao proprietário após o recebimento do aluguel e desconto da taxa de administração da imobiliária.
 
-Regras:
+## 5. Status do Contrato
 
-```text
-- Imóvel muda para alugado.
-- Gera parcelas de aluguel.
-- Permite registro de pagamentos.
-- Permite geração de repasses.
-```
+O contrato deve possuir status controlado pelo sistema.
 
-## Vencido
+Status sugeridos:
 
-Contrato passou da data final e ainda não foi renovado ou encerrado.
+| Status                | Descrição                                                       |
+| --------------------- | --------------------------------------------------------------- |
+| Rascunho              | Contrato em elaboração, ainda sem validade operacional          |
+| Aguardando Assinatura | Contrato revisado, mas ainda pendente de assinatura             |
+| Ativo                 | Contrato vigente e válido                                       |
+| Vencido               | Contrato chegou ao fim da vigência, mas ainda não foi encerrado |
+| Encerrado             | Contrato finalizado normalmente                                 |
+| Rescindido            | Contrato finalizado antes do prazo                              |
+| Cancelado             | Contrato cancelado antes de entrar em vigor                     |
 
-Regras:
+## 6. Fluxo Principal do Contrato
 
-```text
-- Deve aparecer como alerta no dashboard.
-- Permite renovação ou encerramento.
-```
+O fluxo principal será:
 
-## Encerrado
+1. Usuário acessa a área de contratos.
+2. Clica em “Novo Contrato”.
+3. Seleciona um imóvel disponível.
+4. O sistema carrega automaticamente o proprietário vinculado ao imóvel.
+5. Usuário seleciona o inquilino.
+6. Usuário informa dados da locação.
+7. Usuário informa valores comerciais.
+8. Usuário informa dados de caução.
+9. Usuário informa regras de multa.
+10. Usuário informa regras de repasse.
+11. Usuário revisa os dados.
+12. Usuário salva o contrato como rascunho ou ativa o contrato.
+13. Ao ativar, o imóvel passa para o status “Alugado”.
+14. O sistema poderá gerar as previsões financeiras do contrato.
 
-Contrato finalizado normalmente.
+## 7. Cadastro de Contrato
+
+O cadastro deve ser dividido em etapas para melhorar a experiência do usuário.
+
+## 7.1 Etapa 1 — Imóvel e Partes do Contrato
+
+Campos:
+
+* imóvel;
+* proprietário;
+* inquilino;
+* corretor responsável;
+* data de criação;
+* observações iniciais.
 
 Regras:
 
-```text
-- Mantém histórico financeiro.
-- Pode cancelar parcelas futuras.
-- Imóvel pode voltar para disponível ou inativo.
-```
+* O campo imóvel deve listar apenas imóveis com status **Disponível**.
+* Ao selecionar o imóvel, o sistema deve preencher automaticamente o proprietário.
+* O proprietário não deve ser alterado manualmente no contrato.
+* O campo inquilino deve listar apenas clientes ativos com papel de **Inquilino**.
 
-## Cancelado
+## 7.2 Etapa 2 — Dados da Locação
 
-Contrato cancelado por erro, desistência ou situação administrativa.
+Campos:
+
+* data de início do contrato;
+* data de término do contrato;
+* prazo em meses;
+* dia de vencimento do aluguel;
+* finalidade da locação;
+* tipo de contrato;
+* permite renovação automática;
+* observações contratuais.
+
+Finalidades possíveis:
+
+* residencial;
+* comercial;
+* temporada;
+* rural;
+* outro.
+
+Tipos possíveis:
+
+* contrato novo;
+* renovação;
+* aditivo;
+* contrato temporário.
+
+## 7.3 Etapa 3 — Valores do Contrato
+
+Campos:
+
+* valor do aluguel;
+* valor do condomínio;
+* condomínio incluso no aluguel;
+* valor do IPTU;
+* IPTU incluso no aluguel;
+* valor de outras taxas;
+* valor total previsto mensal;
+* percentual da taxa de administração da imobiliária;
+* valor fixo da taxa de administração, se aplicável;
+* forma de cobrança;
+* forma de pagamento preferencial.
 
 Regras:
 
-```text
-- Deve exigir motivo.
-- Não deve apagar histórico.
-- Pode cancelar parcelas futuras.
-```
+* O valor do aluguel deve ser obrigatório.
+* O dia de vencimento deve ser obrigatório.
+* O sistema deve permitir definir se condomínio e IPTU serão pagos pelo inquilino ou pelo proprietário.
+* A taxa de administração pode ser percentual ou valor fixo.
+* O valor de repasse ao proprietário deve considerar a regra de administração definida.
 
----
+## 7.4 Etapa 4 — Encargos e Responsabilidades
 
-# 5. Wizard de cadastro do contrato
+O contrato deve permitir definir quem será responsável por cada encargo.
 
-O cadastro do contrato deve ser feito em página completa, utilizando wizard/steps.
+Encargos sugeridos:
 
-## Etapas
+| Encargo               | Responsável               |
+| --------------------- | ------------------------- |
+| IPTU                  | Proprietário ou Inquilino |
+| Condomínio            | Proprietário ou Inquilino |
+| Água                  | Proprietário ou Inquilino |
+| Energia               | Proprietário ou Inquilino |
+| Internet              | Proprietário ou Inquilino |
+| Taxa de lixo          | Proprietário ou Inquilino |
+| Seguro incêndio       | Proprietário ou Inquilino |
+| Manutenção ordinária  | Proprietário ou Inquilino |
+| Manutenção estrutural | Proprietário              |
 
-```text
-1. Imóvel
-2. Inquilino
-3. Dados do contrato
-4. Multas e regras
-5. Encargos
-6. Financeiro e Caução
-7. Revisão
-```
+Regras:
 
----
-
-# 6. Etapa 1 — Imóvel
+* O sistema deve armazenar a responsabilidade de cada encargo.
+* Essas informações poderão ser usadas futuramente para geração financeira, notificações e relatórios.
 
-## Objetivo
+## 7.5 Etapa 5 — Caução
 
-Selecionar o imóvel que será alugado.
+Campos:
 
-## Regras
+* possui caução;
+* tipo de caução;
+* valor da caução;
+* quantidade de meses de caução;
+* data de recebimento;
+* forma de recebimento;
+* status da caução;
+* observações.
 
-```text
-- Listar apenas imóveis disponíveis.
-- Não permitir seleção de imóvel alugado, reservado ou inativo.
-- Exibir dados resumidos do imóvel.
-- Exibir proprietário vinculado ao imóvel.
-```
+Tipos de caução:
 
-## Campos exibidos
+* dinheiro;
+* PIX;
+* transferência;
+* depósito bancário;
+* cheque;
+* outro.
 
-```text
-Código do imóvel
-Tipo do imóvel
-Endereço
-Bairro
-Cidade
-Proprietário
-Valor sugerido de aluguel
-Status
-Fotos do imóvel
-```
+Status da caução:
 
-## Filtros
+* pendente;
+* recebida;
+* utilizada;
+* devolvida;
+* parcialmente devolvida.
 
-```text
-Código
-Endereço
-Proprietário
-Tipo
-Bairro
-Valor máximo
-```
+Regras:
 
----
+* A caução deve ser opcional.
+* Quando houver caução, o valor deve ser obrigatório.
+* O sistema deve permitir informar se a caução corresponde a uma quantidade de meses de aluguel.
+* A caução deve possuir controle de recebimento e devolução.
+* Ao encerrar o contrato, o sistema deve permitir registrar se a caução foi devolvida, retida ou parcialmente utilizada.
 
-# 7. Etapa 2 — Inquilino
+## 7.6 Etapa 6 — Multas e Penalidades
 
-## Objetivo
+O contrato deve permitir configurar regras de multa.
 
-Selecionar ou cadastrar o inquilino do contrato.
+### Multa por atraso
 
-## Campos exibidos
+Campos:
 
-```text
-Nome
-CPF
-RG
-Telefone
-WhatsApp
-Email
-Profissão
-Renda
-```
+* possui multa por atraso;
+* percentual da multa;
+* valor fixo da multa, se aplicável;
+* juros por dia;
+* tolerância em dias;
+* observações.
 
-## Ações
+Exemplo:
 
-```text
-Selecionar inquilino existente
-Cadastrar novo inquilino
-Editar dados básicos do inquilino
-Visualizar histórico de contratos
-```
+* multa de 2% após o vencimento;
+* juros de 1% ao mês ou proporcional ao dia;
+* tolerância de 0, 1, 3 ou 5 dias.
 
----
+### Multa por quebra de contrato
 
-# 8. Etapa 3 — Dados do contrato
+Campos:
 
-## Objetivo
+* possui multa por quebra de contrato;
+* tipo de cálculo;
+* quantidade de aluguéis;
+* percentual;
+* valor fixo;
+* cálculo proporcional ao tempo restante;
+* observações.
 
-Informar os dados principais da locação.
+Tipos de cálculo possíveis:
 
-## Campos
-
-```text
-Data de início
-Data de fim
-Prazo em meses
-Dia de vencimento
-Valor do aluguel
-Corretor responsável
-Observações
-```
-
-## Regras
-
-```text
-1. Data final deve ser maior que a data inicial.
-2. Dia de vencimento deve estar entre 1 e 31.
-3. Valor do aluguel deve ser maior que zero.
-4. Corretor pode ser opcional.
-5. O proprietário do contrato deve ser o proprietário atual do imóvel.
-```
-
----
-
-# 9. Etapa 4 — Multas e regras de pagamento
-
-## Objetivo
-
-Configurar as penalidades aplicáveis ao contrato.
-
-Esta etapa contempla:
-
-- Multa por atraso no pagamento.
-- Juros por atraso.
-- Dias de tolerância.
-- Multa por quebra de contrato.
-- Cálculo proporcional da multa de rescisão.
-
----
-
-## 9.1 Multa por atraso
-
-A multa por atraso é aplicada quando o inquilino paga o aluguel após a data de vencimento.
-
-### Campos
-
-```text
-Aplicar multa por atraso
-Percentual da multa por atraso
-Aplicar juros por atraso
-Percentual de juros mensal
-Dias de tolerância
-Observações
-```
-
-### Exemplo
-
-```text
-Valor do aluguel: R$ 1.500,00
-Multa por atraso: 2%
-Juros mensal: 1%
-Dias de tolerância: 0
-```
-
-### Cálculo
-
-```text
-Multa por atraso = valor do aluguel x percentual da multa
-Juros proporcional = valor do aluguel x percentual mensal / 30 x dias em atraso
-Valor total = aluguel + multa + juros + encargos - descontos
-```
-
-### Exemplo de atraso
-
-```text
-Aluguel: R$ 1.500,00
-Dias em atraso: 10
-Multa 2%: R$ 30,00
-Juros 1% ao mês proporcional: R$ 5,00
-Total: R$ 1.535,00
-```
-
----
-
-## 9.2 Multa por quebra de contrato
-
-A multa por quebra de contrato é aplicada quando o contrato é encerrado antes do prazo previsto.
-
-### Campos
-
-```text
-Aplicar multa por rescisão antecipada
-Tipo da multa de rescisão
-Quantidade de aluguéis da multa
-Calcular proporcional ao tempo restante
-Observações
-```
-
-### Tipo da multa
-
-```text
-quantidade_alugueis
-valor_fixo
-```
-
-Para o MVP, recomenda-se iniciar com:
-
-```text
-quantidade_alugueis
-```
-
-### Exemplo
-
-```text
-Valor do aluguel: R$ 1.500,00
-Multa contratual: 3 aluguéis
-Duração total do contrato: 12 meses
-Meses restantes: 6
-```
-
-### Cálculo
-
-```text
-Multa cheia = valor do aluguel x quantidade de aluguéis
-Multa proporcional = multa cheia x meses restantes / meses totais do contrato
-```
-
-### Resultado
-
-```text
-Multa cheia = R$ 4.500,00
-Multa proporcional = R$ 2.250,00
-```
-
----
-
-# 10. Etapa 5 — Encargos contratuais
-
-## Objetivo
-
-Definir a responsabilidade por cada encargo vinculado ao contrato.
-
-## Encargos padrão
-
-```text
-IPTU
-Condomínio
-Água
-Energia
-Seguro
-Outro
-```
-
-## Responsáveis possíveis
-
-```text
-locador
-locatario
-incluso_no_aluguel
-```
-
-## Campos
-
-```text
-Tipo do encargo
-Responsável
-Cobrar junto ao aluguel
-Valor estimado
-Observações
-```
-
-## Regras
-
-```text
-1. Encargos devem ficar vinculados ao contrato.
-2. Encargos não devem compor automaticamente a receita da imobiliária.
-3. Encargos cobrados junto ao aluguel devem aparecer na parcela.
-4. Encargos de terceiros devem ser separados da taxa da imobiliária.
-```
-
----
-
-# 11. Etapa 6 — Financeiro e Caução
-
-## Objetivo
-
-Configurar os dados financeiros mensais do contrato e a garantia/caução.
-
-Esta etapa deve ser dividida em dois blocos:
-
-```text
-Financeiro mensal
-Caução / Garantia
-```
-
----
-
-## 11.1 Financeiro mensal
-
-### Campos
-
-```text
-Valor do aluguel
-Percentual da taxa de administração
-Valor da taxa de administração
-Valor previsto de repasse ao proprietário
-Gerar parcelas automaticamente
-Primeiro vencimento
-Quantidade de parcelas
-```
-
-### Regra de cálculo
-
-```text
-Valor da taxa de administração = valor do aluguel x percentual da taxa / 100
-Valor de repasse ao proprietário = valor do aluguel - valor da taxa de administração
-```
-
-### Exemplo
-
-```text
-Aluguel: R$ 1.500,00
-Taxa de administração: 10%
-Receita da imobiliária: R$ 150,00
-Repasse ao proprietário: R$ 1.350,00
-```
-
----
-
-## 11.2 Caução / Garantia
-
-A caução faz parte das condições financeiras do contrato, mas não deve ser tratada como aluguel mensal.
-
-## Regra principal
-
-```text
-A caução não é aluguel.
-A caução não é receita operacional da imobiliária.
-A caução não gera automaticamente taxa de administração.
-A caução não gera repasse mensal ao proprietário.
-A caução deve permanecer vinculada ao contrato.
-```
-
-## Tipos de garantia
-
-```text
-caucao_dinheiro
-fiador
-seguro_fianca
-titulo_capitalizacao
-sem_garantia
-outro
-```
-
-## Campos
-
-```text
-Possui caução
-Tipo de garantia
-Valor da caução
-Quantidade de aluguéis
-Data de recebimento
-Forma de recebimento
-Responsável pela guarda
-Status da caução
-Observações
-```
-
-## Responsável pela guarda
-
-```text
-imobiliaria
-proprietario
-terceiro
-```
-
-## Status da caução
-
-```text
-nao_aplicavel
-aguardando_recebimento
-recebida
-devolvida
-abatida
-retida_parcialmente
-retida_integralmente
-cancelada
-```
-
-## Exemplo
-
-```text
-Tipo de garantia: Caução em dinheiro
-Valor da caução: R$ 3.000,00
-Quantidade de aluguéis: 2
-Data de recebimento: 01/07/2026
-Forma de recebimento: PIX
-Responsável pela guarda: Imobiliária
-Status: Aguardando recebimento
-```
-
----
-
-# 12. Etapa 7 — Revisão
-
-## Objetivo
-
-Exibir todos os dados do contrato antes de salvar ou ativar.
-
-## Blocos da revisão
-
-```text
-Imóvel
-Proprietário
-Inquilino
-Corretor
-Dados do contrato
-Multas e regras
-Encargos
-Financeiro mensal
-Caução / Garantia
-```
-
-## Ações
-
-```text
-Salvar como rascunho
-Ativar contrato
-Voltar
-Cancelar
-```
-
----
-
-# 13. Ativação do contrato
-
-Ao ativar o contrato, o sistema deve executar as seguintes ações:
-
-```text
-1. Validar se o imóvel ainda está disponível.
-2. Alterar status do contrato para ativo.
-3. Alterar status do imóvel para alugado.
-4. Gerar parcelas de aluguel, se configurado.
-5. Registrar histórico da ativação.
-6. Criar registro de caução, se houver.
-7. Criar lançamento financeiro da caução, se já recebida.
-```
-
----
-
-# 14. Geração de parcelas
-
-## Regras
-
-```text
-1. Parcelas devem ser geradas conforme data de início, data de fim e dia de vencimento.
-2. Contrato em rascunho não gera parcelas.
-3. Parcela deve possuir mês e ano de referência.
-4. Parcela deve armazenar aluguel, encargos, multa, juros, desconto e total.
-5. Parcelas futuras podem ser canceladas em caso de rescisão.
-```
-
-## Status da parcela
-
-```text
-pendente
-pago
-vencido
-cancelado
-pago_parcial
-```
-
----
-
-# 15. Registro de pagamento
-
-## Fluxo
-
-```text
-Usuário seleciona uma parcela
-   ↓
-Sistema calcula atraso, multa e juros
-   ↓
-Usuário informa data e forma de pagamento
-   ↓
-Sistema calcula total
-   ↓
-Usuário confirma pagamento
-   ↓
-Sistema registra entrada financeira
-   ↓
-Sistema gera repasse pendente ao proprietário
-   ↓
-Sistema atualiza status da parcela
-```
-
-## Campos
-
-```text
-Parcela
-Data do pagamento
-Forma de pagamento
-Valor do aluguel
-Valor dos encargos
-Valor da multa
-Valor dos juros
-Valor do desconto
-Valor total
-Valor pago
-Observação
-```
-
-## Formas de pagamento
-
-```text
-pix
-dinheiro
-cartao_credito
-cartao_debito
-transferencia
-boleto
-outro
-```
-
----
-
-# 16. Repasses ao proprietário
-
-## Regra
-
-Ao registrar o pagamento de uma parcela de aluguel, o sistema deve gerar um repasse pendente ao proprietário.
-
-## Cálculo
-
-```text
-Valor bruto = valor recebido de aluguel
-Taxa de administração = valor bruto x percentual da taxa / 100
-Valor líquido = valor bruto - taxa de administração
-```
-
-## Status do repasse
-
-```text
-pendente
-pago
-cancelado
-```
-
-## Observação
-
-Encargos, caução, multas e valores de terceiros não devem ser misturados automaticamente com o repasse mensal sem regra explícita.
-
----
-
-# 17. Caução no financeiro
-
-## Recebimento da caução
-
-```text
-Contrato ativo ou em ativação
-   ↓
-Usuário registra recebimento da caução
-   ↓
-Sistema cria lançamento financeiro do tipo entrada
-   ↓
-Categoria: caução
-   ↓
-Sistema atualiza status da caução para recebida
-```
-
-## Devolução da caução
-
-```text
-Contrato encerrado ou em rescisão
-   ↓
-Usuário informa valor a devolver
-   ↓
-Sistema registra movimentação da caução
-   ↓
-Sistema cria lançamento financeiro do tipo saída
-   ↓
-Sistema atualiza status da caução
-```
-
-## Retenção da caução
-
-```text
-Usuário informa valor retido
-   ↓
-Informa motivo da retenção
-   ↓
-Sistema registra movimentação
-   ↓
-Sistema atualiza saldo da caução
-```
-
-## Abatimento da caução
-
-```text
-Usuário informa valor a abater
-   ↓
-Seleciona débito a ser abatido
-   ↓
-Sistema registra movimentação
-   ↓
-Sistema reduz saldo da caução
-```
-
----
-
-# 18. Rescisão de contrato
-
-## Objetivo
-
-Encerrar o contrato antes da data final prevista.
-
-## Campos
-
-```text
-Data da rescisão
-Solicitado por
-Motivo
-Destino do imóvel
-Ação sobre parcelas futuras
-Valor da multa
-Valor do desconto
-Valor final da multa
-Valor da caução recebida
-Débitos em aberto
-Valor a reter da caução
-Valor a abater com caução
-Valor a devolver da caução
-Observações
-```
-
-## Solicitado por
-
-```text
-locatario
-locador
-imobiliaria
-acordo
-```
-
-## Destino do imóvel
-
-```text
-disponivel
-inativo
-```
-
-## Ação sobre parcelas futuras
-
-```text
-cancelar_parcelas_futuras
-manter_parcelas_futuras
-```
-
-## Regras
-
-```text
-1. O sistema deve calcular multa de rescisão, se configurada.
-2. O sistema deve verificar parcelas vencidas em aberto.
-3. O sistema deve permitir usar caução para abater débitos.
-4. O sistema deve permitir retenção parcial ou integral da caução.
-5. O sistema deve permitir devolução do saldo da caução.
-6. O contrato deve mudar para encerrado.
-7. O imóvel deve mudar para disponível ou inativo.
-8. Parcelas futuras podem ser canceladas.
-9. Histórico financeiro deve ser preservado.
-```
-
----
-
-# 19. Renovação de contrato
-
-## Objetivo
-
-Criar nova vigência para um contrato existente.
-
-## Campos
-
-```text
-Nova data de início
-Nova data de fim
-Novo valor do aluguel
-Novo percentual da taxa de administração
-Manter encargos anteriores
-Manter regras de multa
-Manter caução anterior
-Gerar novas parcelas
-Observações
-```
-
-## Regras
-
-```text
-1. Renovação deve preservar histórico do contrato anterior.
-2. O sistema pode criar um novo contrato vinculado ao contrato original.
-3. O sistema deve permitir reajuste de valor.
-4. O sistema deve permitir manter ou alterar encargos.
-5. O sistema deve permitir manter ou alterar regras de multa.
-6. A caução pode ser mantida, devolvida ou complementada.
-```
-
----
-
-# 20. Tela de listagem de contratos
-
-## Filtros
-
-```text
-Busca geral
-Status
-Proprietário
-Inquilino
-Imóvel
-Corretor
-Período de início
-Período de fim
-Dia de vencimento
-Contratos vencidos
-Contratos vencendo
-```
-
-## Colunas
-
-```text
-Código
-Imóvel
-Inquilino
-Proprietário
-Valor do aluguel
-Vencimento
-Data de início
-Data de fim
-Status
-Ações
-```
-
-## Ações
-
-```text
-Visualizar
-Editar
-Registrar pagamento
-Renovar
-Encerrar
-Cancelar
-Excluir
-```
-
----
-
-# 21. Tela de detalhes do contrato
-
-A tela de detalhes deve usar tabs.
-
-## Tabs
-
-```text
-Resumo
-Parcelas
-Encargos
-Caução
-Repasses
-Documentos
-Histórico
-```
-
----
-
-## 21.1 Tab Resumo
-
-Exibir:
-
-```text
-Dados do contrato
-Imóvel
-Proprietário
-Inquilino
-Corretor
-Período
-Dia de vencimento
-Valor do aluguel
-Taxa da imobiliária
-Repasse previsto
-Multa por atraso
-Multa por rescisão
-Status da caução
-```
-
----
-
-## 21.2 Tab Parcelas
-
-Colunas:
-
-```text
-Referência
-Vencimento
-Valor do aluguel
-Encargos
-Multa
-Juros
-Desconto
-Total
-Status
-Ações
-```
-
----
-
-## 21.3 Tab Encargos
-
-Colunas:
-
-```text
-Encargo
-Responsável
-Cobrar junto ao aluguel
-Valor estimado
-Observações
-```
-
----
-
-## 21.4 Tab Caução
-
-Exibir resumo:
-
-```text
-Tipo de garantia
-Valor da caução
-Quantidade de aluguéis
-Data de recebimento
-Forma de recebimento
-Responsável pela guarda
-Status atual
-Saldo disponível
-```
-
-Movimentações:
-
-```text
-Data
-Tipo
-Valor
-Forma
-Descrição
-Usuário
-```
+* valor fixo;
+* percentual sobre o contrato;
+* quantidade de aluguéis;
+* proporcional ao período restante.
+
+Regras:
+
+* A multa por atraso será usada futuramente no financeiro.
+* A multa por quebra será usada no processo de rescisão do contrato.
+* O sistema deve permitir registrar a regra, mesmo que o cálculo financeiro automático seja implementado posteriormente.
+
+## 7.7 Etapa 7 — Repasses ao Proprietário
+
+Campos:
+
+* percentual de administração da imobiliária;
+* valor fixo de administração;
+* forma de repasse;
+* dia previsto para repasse;
+* dados bancários do proprietário;
+* chave PIX;
+* observações de repasse.
+
+Regras:
+
+* O repasse deve ser calculado com base no valor recebido do aluguel.
+* O sistema deve considerar a taxa de administração da imobiliária.
+* O repasse pode ser feito por PIX, transferência ou outro meio.
+* Futuramente, o módulo financeiro poderá gerar contas a pagar para o proprietário.
+
+## 7.8 Etapa 8 — Documentos e Anexos
+
+O contrato deve permitir anexar documentos.
+
+Documentos possíveis:
+
+* contrato assinado;
+* documentos do inquilino;
+* documentos do proprietário;
+* laudo de vistoria inicial;
+* laudo de vistoria final;
+* comprovante de caução;
+* comprovantes diversos;
+* aditivos contratuais.
+
+Campos do anexo:
+
+* nome do arquivo;
+* tipo do documento;
+* arquivo;
+* data de envio;
+* observações.
+
+## 7.9 Etapa 9 — Revisão e Ativação
+
+Antes de ativar o contrato, o sistema deve exibir uma tela de revisão com:
+
+* imóvel;
+* proprietário;
+* inquilino;
+* período de vigência;
+* valor do aluguel;
+* dia de vencimento;
+* caução;
+* multas;
+* encargos;
+* repasse;
+* observações.
+
+A ativação deve exigir confirmação.
+
+Ao ativar:
+
+* o contrato passa para o status **Ativo**;
+* o imóvel passa para o status **Alugado**;
+* o sistema poderá gerar previsões financeiras;
+* o evento deve ser registrado no histórico.
+
+## 8. Listagem de Contratos
+
+A tela de listagem deve exibir os contratos em tabela.
+
+Colunas sugeridas:
+
+* número do contrato;
+* imóvel;
+* proprietário;
+* inquilino;
+* data de início;
+* data de término;
+* valor do aluguel;
+* status;
+* vencimento;
+* ações.
+
+Filtros:
+
+* status;
+* imóvel;
+* proprietário;
+* inquilino;
+* período de início;
+* período de término;
+* contratos vencendo;
+* contratos ativos;
+* contratos encerrados;
+* contratos rescindidos.
 
 Ações:
 
-```text
-Registrar recebimento
-Registrar devolução
-Registrar abatimento
-Registrar retenção
-Registrar ajuste
-```
-
----
-
-## 21.5 Tab Repasses
-
-Colunas:
-
-```text
-Referência
-Valor recebido
-Taxa da imobiliária
-Valor líquido
-Status
-Data de pagamento
-Ações
-```
-
----
-
-## 21.6 Tab Documentos
-
-Exibir documentos vinculados ao contrato.
-
-Exemplos:
-
-```text
-Contrato assinado
-Documento do inquilino
-Comprovante de caução
-Comprovante de pagamento
-Outros anexos
-```
-
----
-
-## 21.7 Tab Histórico
-
-Registrar eventos relevantes.
-
-Exemplos:
-
-```text
-Contrato criado
-Contrato ativado
-Parcelas geradas
-Pagamento registrado
-Repasse gerado
-Caução recebida
-Caução devolvida
-Contrato renovado
-Contrato rescindido
-```
-
----
-
-# 22. Tabelas em português
-
-Todas as tabelas devem usar nomes em português, em snake_case e sem acentos.
-
-## Tabelas principais
-
-```text
-contratos_locacao
-encargos_contrato
-parcelas_aluguel
-repasses_proprietarios
-caucoes_contrato
-movimentacoes_caucao
-rescisoes_contrato
-renovacoes_contrato
-```
-
----
-
-# 23. Tabela contratos_locacao
-
-```text
-id
-uuid
-codigo
-imovel_id
-proprietario_id
-inquilino_id
-corretor_id
-contrato_anterior_id
-data_inicio
-data_fim
-dia_vencimento
-valor_aluguel
-percentual_taxa_administracao
-valor_taxa_administracao
-valor_repasse_proprietario
-aplicar_multa_atraso
-percentual_multa_atraso
-aplicar_juros_atraso
-percentual_juros_mensal_atraso
-dias_tolerancia_atraso
-aplicar_multa_rescisao
-tipo_multa_rescisao
-quantidade_alugueis_multa_rescisao
-valor_fixo_multa_rescisao
-multa_rescisao_proporcional
-status
-observacoes
-criado_por
-created_at
-updated_at
-deleted_at
-```
-
----
-
-# 24. Tabela encargos_contrato
-
-```text
-id
-uuid
-contrato_locacao_id
-tipo_encargo
-responsavel
-valor_estimado
-cobrar_junto_aluguel
-observacoes
-created_at
-updated_at
-deleted_at
-```
-
----
-
-# 25. Tabela parcelas_aluguel
-
-```text
-id
-uuid
-contrato_locacao_id
-mes_referencia
-ano_referencia
-data_vencimento
-valor_aluguel
-valor_encargos
-valor_multa_atraso
-valor_juros_atraso
-valor_desconto
-valor_total
-valor_pago
-data_pagamento
-forma_pagamento
-status
-observacoes
-created_at
-updated_at
-deleted_at
-```
-
----
-
-# 26. Tabela repasses_proprietarios
-
-```text
-id
-uuid
-contrato_locacao_id
-imovel_id
-proprietario_id
-parcela_aluguel_id
-valor_bruto
-valor_taxa_administracao
-valor_liquido
-status
-data_pagamento
-forma_pagamento
-observacoes
-created_at
-updated_at
-deleted_at
-```
-
----
-
-# 27. Tabela caucoes_contrato
-
-```text
-id
-uuid
-contrato_locacao_id
-tipo_garantia
-valor_caucao
-quantidade_alugueis
-data_recebimento
-forma_recebimento
-responsavel_guarda
-status
-observacoes
-created_at
-updated_at
-deleted_at
-```
-
----
-
-# 28. Tabela movimentacoes_caucao
-
-```text
-id
-uuid
-caucao_contrato_id
-tipo_movimentacao
-valor
-data_movimentacao
-forma_movimentacao
-descricao
-criado_por
-created_at
-updated_at
-```
-
-## Tipos de movimentação
-
-```text
-recebimento
-devolucao
-abatimento
-retencao_parcial
-retencao_integral
-ajuste
-```
-
----
-
-# 29. Tabela rescisoes_contrato
-
-```text
-id
-uuid
-contrato_locacao_id
-data_rescisao
-motivo
-solicitado_por
-meses_restantes
-valor_multa_rescisao
-valor_desconto
-valor_final_multa
-valor_caucao_recebida
-valor_caucao_retida
-valor_caucao_abatida
-valor_caucao_devolvida
-destino_imovel
-acao_parcelas_futuras
-observacoes
-criado_por
-created_at
-updated_at
-```
-
----
-
-# 30. Tabela renovacoes_contrato
-
-```text
-id
-uuid
-contrato_original_id
-novo_contrato_id
-data_renovacao
-valor_aluguel_anterior
-valor_aluguel_novo
-data_inicio_anterior
-data_fim_anterior
-nova_data_inicio
-nova_data_fim
-manter_encargos
-manter_regras_multa
-manter_caucao
-gerar_novas_parcelas
-observacoes
-criado_por
-created_at
-updated_at
-```
-
----
-
-# 31. Rotas sugeridas Laravel
-
-```php
-Route::resource('contratos-locacao', ContratoLocacaoController::class);
-
-Route::post('contratos-locacao/{contrato}/ativar', [ContratoLocacaoController::class, 'ativar'])
-    ->name('contratos-locacao.ativar');
-
-Route::post('contratos-locacao/{contrato}/parcelas/{parcela}/pagamento', [PagamentoAluguelController::class, 'store'])
-    ->name('contratos-locacao.parcelas.pagamento');
-
-Route::post('contratos-locacao/{contrato}/rescindir', [RescisaoContratoController::class, 'store'])
-    ->name('contratos-locacao.rescindir');
-
-Route::post('contratos-locacao/{contrato}/renovar', [RenovacaoContratoController::class, 'store'])
-    ->name('contratos-locacao.renovar');
-
-Route::post('contratos-locacao/{contrato}/caucao/movimentacoes', [MovimentacaoCaucaoController::class, 'store'])
-    ->name('contratos-locacao.caucao.movimentacoes');
-
-Route::post('repasses-proprietarios/{repasse}/marcar-como-pago', [RepasseProprietarioController::class, 'marcarComoPago'])
-    ->name('repasses-proprietarios.marcar-como-pago');
-```
-
----
-
-# 32. Páginas Vue/Inertia sugeridas
-
-```text
-resources/js/Pages/ContratosLocacao/Index.vue
-resources/js/Pages/ContratosLocacao/Create.vue
-resources/js/Pages/ContratosLocacao/Edit.vue
-resources/js/Pages/ContratosLocacao/Show.vue
-```
-
----
-
-# 33. Componentes Vue sugeridos
-
-```text
-resources/js/Components/ContratosLocacao/ContratoWizard.vue
-resources/js/Components/ContratosLocacao/Steps/StepImovel.vue
-resources/js/Components/ContratosLocacao/Steps/StepInquilino.vue
-resources/js/Components/ContratosLocacao/Steps/StepDadosContrato.vue
-resources/js/Components/ContratosLocacao/Steps/StepMultas.vue
-resources/js/Components/ContratosLocacao/Steps/StepEncargos.vue
-resources/js/Components/ContratosLocacao/Steps/StepFinanceiroCaucao.vue
-resources/js/Components/ContratosLocacao/Steps/StepRevisao.vue
-resources/js/Components/ContratosLocacao/ContratoResumoCards.vue
-resources/js/Components/ContratosLocacao/TabsContrato.vue
-resources/js/Components/ContratosLocacao/TabelaParcelas.vue
-resources/js/Components/ContratosLocacao/TabelaRepasses.vue
-resources/js/Components/ContratosLocacao/AbaCaucao.vue
-resources/js/Components/ContratosLocacao/ModalRegistrarPagamento.vue
-resources/js/Components/ContratosLocacao/ModalRescisaoContrato.vue
-resources/js/Components/ContratosLocacao/ModalRenovarContrato.vue
-resources/js/Components/ContratosLocacao/ModalMovimentacaoCaucao.vue
-```
-
----
-
-# 34. Services sugeridos
-
-```text
-ContratoLocacaoService
-GerarParcelasContratoService
-PagamentoAluguelService
-RepasseProprietarioService
-CalcularMultaAtrasoService
-CalcularMultaRescisaoService
-CaucaoContratoService
-RescisaoContratoService
-RenovacaoContratoService
-```
-
----
-
-# 35. Regras de negócio consolidadas
-
-```text
-1. Apenas imóveis disponíveis podem ser vinculados a contratos.
-2. Contratos em rascunho não alteram status do imóvel.
-3. Contratos ativos alteram o imóvel para alugado.
-4. Um imóvel não pode possuir dois contratos ativos simultâneos.
-5. Contrato ativo pode gerar parcelas automaticamente.
-6. Multa por atraso deve considerar dias de tolerância.
-7. Juros por atraso devem ser proporcionais aos dias de atraso.
-8. Multa por rescisão pode ser proporcional ao tempo restante.
-9. Encargos devem ficar vinculados ao contrato.
-10. Encargos não são automaticamente receita da imobiliária.
-11. Caução não é aluguel.
-12. Caução não é receita operacional da imobiliária.
-13. Caução não gera taxa de administração automaticamente.
-14. Caução não gera repasse mensal automaticamente.
-15. Caução pode ser recebida, devolvida, abatida ou retida.
-16. Toda movimentação de caução deve ter histórico.
-17. Ao registrar pagamento de aluguel, o sistema deve criar entrada financeira.
-18. Ao registrar pagamento de aluguel, o sistema deve calcular taxa da imobiliária.
-19. Ao registrar pagamento de aluguel, o sistema deve gerar repasse pendente ao proprietário.
-20. Rescisão deve preservar histórico financeiro.
-21. Renovação deve preservar histórico do contrato anterior.
-22. Exclusões devem usar Soft Delete.
-```
-
----
-
-# 36. Ordem recomendada de implementação
-
-```text
-1. Criar migrations das tabelas do contrato.
-2. Criar models e relacionamentos.
-3. Criar enums/status do contrato, parcelas, repasses e caução.
-4. Criar tela de listagem de contratos.
-5. Criar wizard de cadastro.
-6. Implementar seleção apenas de imóveis disponíveis.
-7. Implementar dados básicos do contrato.
-8. Implementar multas e regras.
-9. Implementar encargos.
-10. Implementar financeiro e caução.
-11. Implementar ativação do contrato.
-12. Implementar geração de parcelas.
-13. Implementar tela de detalhes.
-14. Implementar registro de pagamento.
-15. Implementar geração de repasses.
-16. Implementar aba de caução.
-17. Implementar movimentações de caução.
-18. Implementar rescisão.
-19. Implementar renovação.
-20. Implementar notificações por email.
-```
-
----
-
-# 37. Observações para MVP
-
-Para manter o MVP simples, recomenda-se implementar inicialmente:
-
-```text
-Contrato com imóvel, proprietário, inquilino e corretor.
-Multa por atraso com percentual fixo.
-Juros mensal proporcional.
-Multa por rescisão baseada em quantidade de aluguéis.
-Cálculo proporcional da multa de rescisão.
-Encargos vinculados ao contrato.
-Caução em dinheiro.
-Movimentações básicas de caução.
-Parcelas mensais.
-Pagamento de aluguel.
-Repasses ao proprietário.
-Rescisão e renovação simples.
-```
-
-Deixar para fases futuras:
-
-```text
-Correção monetária automática.
-Reajuste automático por índice.
-Assinatura digital.
-Boleto/PIX automático.
-Portal do proprietário.
-Portal do inquilino.
-Integração com WhatsApp.
-Vistoria digital.
-```
+* visualizar;
+* editar;
+* ativar;
+* cancelar;
+* encerrar;
+* rescindir;
+* anexar documentos;
+* visualizar financeiro;
+* imprimir ou gerar PDF futuramente.
+
+## 9. Tela de Detalhes do Contrato
+
+A tela de detalhes deve exibir:
+
+* dados principais;
+* dados do imóvel;
+* dados do proprietário;
+* dados do inquilino;
+* valores;
+* caução;
+* multas;
+* encargos;
+* repasses;
+* documentos;
+* histórico;
+* situação financeira futura;
+* ações disponíveis conforme status.
+
+A tela deve deixar claro o status atual do contrato.
+
+## 10. Edição de Contrato
+
+Regras de edição:
+
+* Contratos em rascunho podem ser editados livremente.
+* Contratos aguardando assinatura podem ser editados com restrições.
+* Contratos ativos podem ter edição limitada.
+* Contratos encerrados, rescindidos ou cancelados não devem permitir edição direta dos dados principais.
+* Alterações importantes em contratos ativos devem gerar histórico.
+
+Campos sensíveis:
+
+* imóvel;
+* inquilino;
+* data de início;
+* data de término;
+* valor do aluguel;
+* caução;
+* multa;
+* taxa de administração.
+
+Esses campos devem exigir confirmação ao serem alterados em contrato ativo.
+
+## 11. Encerramento de Contrato
+
+O encerramento será usado quando o contrato terminar normalmente.
+
+Campos:
+
+* data de encerramento;
+* motivo;
+* situação da caução;
+* valor devolvido da caução;
+* valor retido da caução;
+* observações;
+* novo status do imóvel.
+
+Opções para novo status do imóvel:
+
+* Disponível;
+* Em manutenção;
+* Inativo.
+
+Regras:
+
+* Ao encerrar o contrato, ele passa para o status **Encerrado**.
+* O imóvel deixa de estar alugado.
+* O usuário deve informar o novo status do imóvel.
+* O sistema deve registrar histórico do encerramento.
+
+## 12. Rescisão de Contrato
+
+A rescisão será usada quando o contrato for encerrado antes do prazo.
+
+Campos:
+
+* data da rescisão;
+* responsável pela rescisão;
+* motivo da rescisão;
+* aplica multa;
+* valor da multa;
+* observações;
+* situação da caução;
+* novo status do imóvel.
+
+Responsável pela rescisão:
+
+* inquilino;
+* proprietário;
+* imobiliária;
+* acordo entre as partes.
+
+Regras:
+
+* Ao rescindir, o contrato passa para o status **Rescindido**.
+* O sistema deve permitir calcular ou registrar manualmente a multa.
+* O imóvel deve sair do status **Alugado**.
+* O usuário deve definir se o imóvel ficará **Disponível**, **Em manutenção** ou **Inativo**.
+
+## 13. Integração com Financeiro
+
+O módulo de contratos deve preparar dados para o financeiro.
+
+Ao ativar um contrato, o sistema poderá gerar:
+
+* contas a receber de aluguel;
+* previsões mensais;
+* cobrança de caução;
+* cobranças de encargos;
+* contas a pagar de repasse ao proprietário;
+* receitas da imobiliária;
+* multas por atraso;
+* multa por rescisão.
+
+Regras financeiras futuras:
+
+* Gerar parcelas mensais conforme vigência do contrato.
+* Gerar vencimentos com base no dia de vencimento.
+* Permitir atualização de pagamento.
+* Permitir baixa manual.
+* Permitir envio de cobrança por e-mail.
+* Permitir envio futuro de PIX para pagamento.
+* Permitir controle de inadimplência.
+
+## 14. Integração com Dashboard
+
+O módulo deve fornecer dados para o dashboard, como:
+
+* contratos ativos;
+* contratos vencendo;
+* contratos vencidos;
+* imóveis alugados;
+* receita mensal prevista;
+* receita recebida;
+* inadimplência;
+* valores a repassar;
+* cauções recebidas;
+* contratos rescindidos.
+
+## 15. Integração com Notificações
+
+O sistema deve estar preparado para notificar:
+
+* vencimento de aluguel;
+* atraso no pagamento;
+* contrato próximo do vencimento;
+* necessidade de renovação;
+* caução pendente;
+* contrato aguardando assinatura;
+* rescisão ou encerramento registrado.
+
+Inicialmente, as notificações poderão ser feitas por e-mail.
+
+Futuramente, poderão ser integradas com WhatsApp ou outros canais.
+
+## 16. Permissões
+
+A funcionalidade deve respeitar o controle de permissões do sistema.
+
+Permissões sugeridas:
+
+* visualizar contratos;
+* criar contratos;
+* editar contratos;
+* ativar contratos;
+* cancelar contratos;
+* encerrar contratos;
+* rescindir contratos;
+* gerenciar caução;
+* gerenciar documentos;
+* visualizar dados financeiros do contrato;
+* gerar financeiro do contrato.
+
+Perfis sugeridos:
+
+### Administrador
+
+Pode realizar todas as ações.
+
+### Gestor
+
+Pode criar, editar, visualizar, ativar, encerrar e rescindir contratos.
+
+### Corretor
+
+Pode visualizar contratos relacionados e criar rascunhos, conforme permissão.
+
+### Financeiro
+
+Pode visualizar dados financeiros, caução, cobranças e repasses.
+
+## 17. Modelagem Sugerida
+
+As tabelas devem usar nomes em português.
+
+### contratos_locacao
+
+Campos sugeridos:
+
+* id;
+* numero;
+* imovel_id;
+* proprietario_id;
+* inquilino_id;
+* corretor_id;
+* status;
+* finalidade;
+* tipo_contrato;
+* data_inicio;
+* data_fim;
+* prazo_meses;
+* dia_vencimento;
+* valor_aluguel;
+* valor_condominio;
+* condominio_incluso;
+* valor_iptu;
+* iptu_incluso;
+* valor_outras_taxas;
+* valor_total_mensal;
+* taxa_administracao_percentual;
+* taxa_administracao_valor;
+* permite_renovacao;
+* observacoes;
+* criado_por;
+* atualizado_por;
+* created_at;
+* updated_at;
+* deleted_at.
+
+### contrato_encargos
+
+Campos sugeridos:
+
+* id;
+* contrato_id;
+* tipo_encargo;
+* responsavel;
+* valor_estimado;
+* incluso_no_aluguel;
+* observacoes;
+* created_at;
+* updated_at.
+
+### contrato_caucoes
+
+Campos sugeridos:
+
+* id;
+* contrato_id;
+* possui_caucao;
+* tipo_caucao;
+* valor;
+* quantidade_meses;
+* data_recebimento;
+* forma_recebimento;
+* status;
+* valor_devolvido;
+* valor_retido;
+* data_devolucao;
+* observacoes;
+* created_at;
+* updated_at.
+
+### contrato_multas
+
+Campos sugeridos:
+
+* id;
+* contrato_id;
+* possui_multa_atraso;
+* multa_atraso_percentual;
+* multa_atraso_valor;
+* juros_dia_percentual;
+* tolerancia_dias;
+* possui_multa_rescisao;
+* tipo_calculo_rescisao;
+* quantidade_alugueis_rescisao;
+* percentual_rescisao;
+* valor_fixo_rescisao;
+* proporcional_periodo_restante;
+* observacoes;
+* created_at;
+* updated_at.
+
+### contrato_documentos
+
+Campos sugeridos:
+
+* id;
+* contrato_id;
+* nome;
+* tipo_documento;
+* caminho_arquivo;
+* mime_type;
+* tamanho;
+* observacoes;
+* enviado_por;
+* created_at;
+* updated_at.
+
+### contrato_historicos
+
+Campos sugeridos:
+
+* id;
+* contrato_id;
+* usuario_id;
+* tipo_evento;
+* descricao;
+* dados_anteriores;
+* dados_novos;
+* created_at.
+
+## 18. Relacionamentos
+
+### Contrato pertence a:
+
+* imóvel;
+* proprietário;
+* inquilino;
+* corretor;
+* usuário criador.
+
+### Contrato possui:
+
+* encargos;
+* caução;
+* multas;
+* documentos;
+* histórico;
+* lançamentos financeiros futuros.
+
+### Imóvel possui:
+
+* vários contratos ao longo do tempo;
+* apenas um contrato ativo por vez.
+
+### Cliente pode possuir:
+
+* contratos como inquilino;
+* imóveis como proprietário;
+* contratos relacionados como proprietário do imóvel.
+
+## 19. Validações
+
+Validações principais:
+
+* imóvel é obrigatório;
+* imóvel deve estar disponível para novo contrato;
+* proprietário é obrigatório;
+* proprietário deve possuir papel de proprietário;
+* inquilino é obrigatório;
+* inquilino deve possuir papel de inquilino;
+* data de início é obrigatória;
+* data de término deve ser maior que a data de início;
+* valor do aluguel é obrigatório e maior que zero;
+* dia de vencimento é obrigatório;
+* status deve ser válido;
+* caução, quando informada, deve possuir valor;
+* multa, quando informada, deve possuir regra de cálculo;
+* não permitir contrato ativo duplicado para o mesmo imóvel.
+
+## 20. Regras de Negócio
+
+* Apenas imóveis disponíveis podem iniciar novo contrato.
+* Ao ativar contrato, o imóvel deve ficar alugado.
+* Ao encerrar ou rescindir contrato, o imóvel deve sair do status alugado.
+* Contrato em rascunho não deve gerar financeiro.
+* Contrato cancelado não deve gerar financeiro.
+* Contrato ativo pode gerar previsões financeiras.
+* Cliente inativo não pode ser selecionado como inquilino.
+* Imóvel inativo não pode ser selecionado para contrato.
+* Proprietário inativo não pode ser usado em novo contrato.
+* A caução deve ser controlada separadamente do aluguel mensal.
+* A multa por atraso deve ser usada em cobranças vencidas.
+* A multa por rescisão deve ser usada no encerramento antecipado.
+* Toda mudança relevante no contrato deve gerar histórico.
+
+## 21. Telas Necessárias
+
+### 21.1 Listagem de Contratos
+
+Tela com tabela, filtros, paginação e ações.
+
+### 21.2 Cadastro de Contrato
+
+Tela em etapas para criação do contrato.
+
+### 21.3 Edição de Contrato
+
+Tela para alteração dos dados conforme status.
+
+### 21.4 Detalhes do Contrato
+
+Tela completa de visualização.
+
+### 21.5 Encerramento de Contrato
+
+Tela ou modal para encerramento normal.
+
+### 21.6 Rescisão de Contrato
+
+Tela ou modal para rescisão antecipada.
+
+### 21.7 Documentos do Contrato
+
+Área para anexar e visualizar documentos.
+
+### 21.8 Histórico do Contrato
+
+Área para visualizar eventos e alterações.
+
+## 22. Componentes Frontend Sugeridos
+
+Componentes Vue sugeridos:
+
+* `ContratosTable.vue`;
+* `ContratoForm.vue`;
+* `ContratoStepImovelPartes.vue`;
+* `ContratoStepDadosLocacao.vue`;
+* `ContratoStepValores.vue`;
+* `ContratoStepEncargos.vue`;
+* `ContratoStepCaucao.vue`;
+* `ContratoStepMultas.vue`;
+* `ContratoStepRevisao.vue`;
+* `ContratoStatusBadge.vue`;
+* `ContratoDetalhesCard.vue`;
+* `ContratoDocumentos.vue`;
+* `ContratoHistorico.vue`;
+* `EncerrarContratoModal.vue`;
+* `RescindirContratoModal.vue`.
+
+## 23. Rotas Sugeridas
+
+Rotas administrativas:
+
+* `GET /contratos`
+* `GET /contratos/create`
+* `POST /contratos`
+* `GET /contratos/{contrato}`
+* `GET /contratos/{contrato}/edit`
+* `PUT /contratos/{contrato}`
+* `POST /contratos/{contrato}/ativar`
+* `POST /contratos/{contrato}/cancelar`
+* `POST /contratos/{contrato}/encerrar`
+* `POST /contratos/{contrato}/rescindir`
+* `POST /contratos/{contrato}/documentos`
+* `DELETE /contratos/{contrato}/documentos/{documento}`
+
+## 24. Backend Laravel
+
+Estrutura sugerida:
+
+* `ContratoLocacaoController`;
+* `StoreContratoLocacaoRequest`;
+* `UpdateContratoLocacaoRequest`;
+* `AtivarContratoRequest`;
+* `EncerrarContratoRequest`;
+* `RescindirContratoRequest`;
+* `ContratoLocacaoService`;
+* `ContratoFinanceiroService`;
+* `ContratoStatusService`;
+* `ContratoDocumentoService`;
+* `ContratoHistoricoService`.
+
+Models sugeridos:
+
+* `ContratoLocacao`;
+* `ContratoEncargo`;
+* `ContratoCaucao`;
+* `ContratoMulta`;
+* `ContratoDocumento`;
+* `ContratoHistorico`.
+
+## 25. Observações de Implementação
+
+* Usar Soft Delete para contratos.
+* Usar transações de banco ao ativar, encerrar ou rescindir contratos.
+* Ao ativar contrato, atualizar imóvel e registrar histórico na mesma transação.
+* Ao encerrar contrato, atualizar contrato, imóvel, caução e histórico na mesma transação.
+* Evitar regras importantes diretamente no controller.
+* Usar Form Requests para validação.
+* Usar Services para regras de ativação, encerramento, rescisão e geração financeira.
+* Preparar a estrutura para geração futura de PDF do contrato.
+
+## 26. Critérios de Aceite
+
+A funcionalidade será considerada concluída quando:
+
+* for possível listar contratos;
+* for possível cadastrar contrato em etapas;
+* for possível selecionar apenas imóveis disponíveis;
+* o proprietário for carregado automaticamente a partir do imóvel;
+* for possível selecionar apenas clientes com papel de inquilino;
+* for possível configurar valores, caução, multas e encargos;
+* for possível salvar contrato como rascunho;
+* for possível ativar contrato;
+* ao ativar, o imóvel mudar para alugado;
+* não for possível criar dois contratos ativos para o mesmo imóvel;
+* for possível visualizar detalhes do contrato;
+* for possível anexar documentos;
+* for possível encerrar contrato;
+* ao encerrar, o imóvel mudar para disponível, manutenção ou inativo;
+* for possível rescindir contrato;
+* toda ação relevante gerar histórico;
+* as permissões básicas forem respeitadas.
+
+## 27. Próximas Evoluções
+
+Funcionalidades futuras:
+
+* geração automática de PDF do contrato;
+* assinatura digital;
+* integração com cobrança PIX;
+* envio automático de boleto ou cobrança;
+* notificações por WhatsApp;
+* renovação automática;
+* aditivos contratuais;
+* vistoria inicial e final;
+* integração com inadimplência;
+* relatório de contratos vencendo;
+* relatório de repasses;
+* relatório de cauções;
+* dashboard financeiro por contrato.
+
+## 28. Resumo
+
+O módulo de Contratos de Locação será uma das áreas centrais do ImobGestor.
+
+Ele conectará imóveis, clientes, financeiro e notificações, permitindo que a imobiliária controle todo o ciclo de vida de uma locação, desde o cadastro inicial até o encerramento ou rescisão do contrato.
+
+A estrutura deve ser simples para o MVP, mas preparada para evoluções futuras como assinatura digital, cobrança automatizada, PIX, vistoria, geração de PDF e controle financeiro completo.

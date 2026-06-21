@@ -22,7 +22,9 @@
       "Bash(python3 -c \"import sys,json,html; d=sys.stdin.read\\(\\); start=d.index\\('data-page=\\\\\"'\\)+11; end=d.index\\('\\\\\"',start\\); print\\(json.dumps\\(json.loads\\(html.unescape\\(d[start:end]\\)\\),indent=2\\)\\)\")",
       "Bash(python3 -c ' *)",
       "Bash(python3)",
-      "WebFetch(domain:daisyui.com)"
+      "WebFetch(domain:daisyui.com)",
+      "Bash(kill %1)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\([\\(a['id'], a['status']\\) for a in d['artifacts']]\\)\")"
     ]
   }
 }

@@ -21,6 +21,8 @@ class AdminUserSeeder extends Seeder
             'deve_alterar_senha' => true,
         ]);
 
+        $user->assignRole('admin');
+
         $this->command->info("Usuário administrador criado:");
         $this->command->info("Email: {$user->email}");
         $this->command->info("Senha temporária: {$senhaTemporaria}");
