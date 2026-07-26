@@ -11,7 +11,7 @@ class AdminUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $senhaTemporaria = Str::random(12);
+        $senhaTemporaria = '12345678'; // Senha temporária padrão
 
         $user = User::create([
             'name' => 'Administrador',

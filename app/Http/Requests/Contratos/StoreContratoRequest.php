@@ -41,6 +41,8 @@ class StoreContratoRequest extends FormRequest
             // Repasse
             'tipo_taxa_administracao'  => ['nullable', Rule::in(['percentual', 'valor_fixo'])],
             'valor_taxa_administracao' => ['nullable', 'numeric', 'min:0'],
+            'gerar_parcelas_automaticamente' => ['nullable', 'boolean'],
+            'quantidade_parcelas'      => ['nullable', 'integer', 'min:1'],
             'dia_repasse'              => ['nullable', 'integer', 'min:1', 'max:31'],
             'forma_repasse'            => ['nullable', Rule::in(['pix', 'transferencia', 'dinheiro'])],
             'banco'                    => ['nullable', 'string', 'max:100'],
@@ -55,6 +57,8 @@ class StoreContratoRequest extends FormRequest
             'encargos'               => ['nullable', 'array'],
             'encargos.*.tipo_encargo' => ['required_with:encargos', Rule::in(['iptu', 'condominio', 'agua', 'energia', 'gas', 'internet', 'outros'])],
             'encargos.*.responsavel'  => ['required_with:encargos', Rule::in(['proprietario', 'inquilino', 'nao_se_aplica'])],
+            'encargos.*.valor_estimado' => ['nullable', 'numeric', 'min:0'],
+            'encargos.*.cobrar_junto_aluguel' => ['nullable', 'boolean'],
             'encargos.*.observacao'   => ['nullable', 'string', 'max:255'],
 
             // Caução
@@ -69,6 +73,7 @@ class StoreContratoRequest extends FormRequest
             'multas.possui_multa_atraso'        => ['nullable', 'boolean'],
             'multas.percentual_multa_atraso'    => ['nullable', 'numeric', 'min:0', 'max:100'],
             'multas.valor_juros_dia'            => ['nullable', 'numeric', 'min:0'],
+            'multas.dias_tolerancia_atraso'      => ['nullable', 'integer', 'min:0'],
             'multas.possui_multa_rescisao'      => ['nullable', 'boolean'],
             'multas.percentual_multa_rescisao'  => ['nullable', 'numeric', 'min:0', 'max:100'],
             'multas.base_calculo_rescisao'      => ['nullable', Rule::in(['alugueis_restantes', 'valor_fixo'])],

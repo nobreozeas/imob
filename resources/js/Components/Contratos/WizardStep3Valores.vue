@@ -54,6 +54,24 @@ function avancar() {
                 <label class="label"><span class="label-text font-medium">Data do Primeiro Reajuste</span></label>
                 <input v-model="form.data_primeiro_reajuste" type="date" class="input input-bordered w-full" />
             </div>
+
+            <div class="form-control">
+                <label class="label cursor-pointer justify-start gap-3">
+                    <input v-model="form.gerar_parcelas_automaticamente" type="checkbox" class="checkbox checkbox-primary" />
+                    <span class="label-text font-medium">Gerar parcelas automaticamente ao ativar</span>
+                </label>
+            </div>
+
+            <div v-if="form.gerar_parcelas_automaticamente && !form.data_fim" class="form-control">
+                <label class="label"><span class="label-text font-medium">Quantidade de parcelas</span></label>
+                <input
+                    v-model="form.quantidade_parcelas"
+                    type="number"
+                    min="1"
+                    class="input input-bordered w-full"
+                    placeholder="Ex: 12"
+                />
+            </div>
         </div>
 
         <div class="flex justify-between pt-2">

@@ -17,7 +17,7 @@ const emit = defineEmits<{ prev: []; next: [] }>();
                     </label>
                 </div>
                 <template v-if="form.multas.possui_multa_atraso">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                         <div class="form-control">
                             <label class="label"><span class="label-text font-medium">Percentual de multa (%)</span></label>
                             <input
@@ -39,6 +39,17 @@ const emit = defineEmits<{ prev: []; next: [] }>();
                                 min="0"
                                 class="input input-bordered w-full"
                                 placeholder="Ex: 0,0333"
+                            />
+                        </div>
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-medium">Dias de tolerância</span></label>
+                            <input
+                                v-model="form.multas.dias_tolerancia_atraso"
+                                type="number"
+                                step="1"
+                                min="0"
+                                class="input input-bordered w-full"
+                                placeholder="Ex: 3"
                             />
                         </div>
                     </div>

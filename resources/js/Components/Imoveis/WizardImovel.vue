@@ -43,9 +43,7 @@ const CAMPO_PARA_ETAPA: Record<string, number> = {
     'caracteristicas.possui_varanda': 3, 'caracteristicas.outras_caracteristicas': 3,
     'dados_comerciais.valor_aluguel': 4, 'dados_comerciais.valor_venda': 4,
     'dados_comerciais.valor_condominio': 4, 'dados_comerciais.valor_iptu': 4,
-    'dados_comerciais.condominio_incluso': 4, 'dados_comerciais.responsavel_iptu': 4,
-    'dados_comerciais.responsavel_agua': 4, 'dados_comerciais.responsavel_energia': 4,
-    'dados_comerciais.responsavel_condominio': 4, 'dados_comerciais.valor_caucao_sugerido': 4,
+    'dados_comerciais.condominio_incluso': 4, 'dados_comerciais.valor_caucao_sugerido': 4,
     'dados_comerciais.observacoes_comerciais': 4,
     'fotos_novas': 5, 'documentos_novos': 5, 'foto_principal_id': 5,
 };

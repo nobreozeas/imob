@@ -47,6 +47,8 @@ class ContratoLocacaoService
                 'data_primeiro_reajuste' => $dados['data_primeiro_reajuste'] ?? null,
                 'tipo_taxa_administracao' => $dados['tipo_taxa_administracao'] ?? ContratoLocacao::TAXA_PERCENTUAL,
                 'valor_taxa_administracao' => $dados['valor_taxa_administracao'] ?? 0,
+                'gerar_parcelas_automaticamente' => (bool) ($dados['gerar_parcelas_automaticamente'] ?? true),
+                'quantidade_parcelas'    => $dados['quantidade_parcelas'] ?? null,
                 'dia_repasse'            => $dados['dia_repasse'] ?? null,
                 'forma_repasse'          => $dados['forma_repasse'] ?? ContratoLocacao::REPASSE_PIX,
                 'banco'                  => $dados['banco'] ?? null,
@@ -123,6 +125,8 @@ class ContratoLocacaoService
                 'data_primeiro_reajuste' => $dados['data_primeiro_reajuste'] ?? null,
                 'tipo_taxa_administracao' => $dados['tipo_taxa_administracao'] ?? $contrato->tipo_taxa_administracao,
                 'valor_taxa_administracao' => $dados['valor_taxa_administracao'] ?? $contrato->valor_taxa_administracao,
+                'gerar_parcelas_automaticamente' => array_key_exists('gerar_parcelas_automaticamente', $dados) ? (bool) $dados['gerar_parcelas_automaticamente'] : $contrato->gerar_parcelas_automaticamente,
+                'quantidade_parcelas'    => $dados['quantidade_parcelas'] ?? null,
                 'dia_repasse'            => $dados['dia_repasse'] ?? null,
                 'forma_repasse'          => $dados['forma_repasse'] ?? $contrato->forma_repasse,
                 'banco'                  => $dados['banco'] ?? null,
@@ -197,6 +201,8 @@ class ContratoLocacaoService
             $contrato->encargos()->create([
                 'tipo_encargo' => $encargo['tipo_encargo'],
                 'responsavel'  => $encargo['responsavel'] ?? 'nao_se_aplica',
+                'valor_estimado' => $encargo['valor_estimado'] ?? null,
+                'cobrar_junto_aluguel' => (bool) ($encargo['cobrar_junto_aluguel'] ?? false),
                 'observacao'   => $encargo['observacao'] ?? null,
             ]);
         }
@@ -223,6 +229,7 @@ class ContratoLocacaoService
             'possui_multa_atraso'       => (bool) ($multas['possui_multa_atraso'] ?? false),
             'percentual_multa_atraso'   => $multas['percentual_multa_atraso'] ?? null,
             'valor_juros_dia'           => $multas['valor_juros_dia'] ?? null,
+            'dias_tolerancia_atraso'    => $multas['dias_tolerancia_atraso'] ?? null,
             'possui_multa_rescisao'     => (bool) ($multas['possui_multa_rescisao'] ?? false),
             'percentual_multa_rescisao' => $multas['percentual_multa_rescisao'] ?? null,
             'base_calculo_rescisao'     => $multas['base_calculo_rescisao'] ?? null,

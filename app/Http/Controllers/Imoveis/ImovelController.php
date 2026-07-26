@@ -22,19 +22,27 @@ class ImovelController extends Controller
     {
         $this->authorize('viewAny', Imovel::class);
 
+        $filtrosEscopo = function ($query) use ($request) {
+            $query
+                ->when($request->busca, function ($q, $busca) {
+                    $q->where(function ($q) use ($busca) {
+                        $q->where('titulo', 'ilike', "%{$busca}%")
+                          ->orWhere('codigo', 'ilike', "%{$busca}%");
+                    });
+                })
+                ->when($request->tipo, fn ($q, $v) => $q->where('tipo', $v))
+                ->when($request->finalidade, fn ($q, $v) => $q->where('finalidade', $v))
+                ->when($request->cidade, fn ($q, $v) => $q->where('cidade', 'ilike', "%{$v}%"))
+                ->when($request->bairro, fn ($q, $v) => $q->where('bairro', 'ilike', "%{$v}%"))
+                ->when($request->proprietario_id, fn ($q, $v) => $q->where('proprietario_id', $v));
+        };
+
+        $verExcluidos = $request->boolean('excluidos') && $request->user()->can('imoveis.restore');
+
         $query = Imovel::with(['proprietario', 'fotos'])
-            ->when($request->busca, function ($q, $busca) {
-                $q->where(function ($q) use ($busca) {
-                    $q->where('titulo', 'ilike', "%{$busca}%")
-                      ->orWhere('codigo', 'ilike', "%{$busca}%");
-                });
-            })
-            ->when($request->tipo, fn ($q, $v) => $q->where('tipo', $v))
-            ->when($request->finalidade, fn ($q, $v) => $q->where('finalidade', $v))
-            ->when($request->status, fn ($q, $v) => $q->where('status', $v))
-            ->when($request->cidade, fn ($q, $v) => $q->where('cidade', 'ilike', "%{$v}%"))
-            ->when($request->bairro, fn ($q, $v) => $q->where('bairro', 'ilike', "%{$v}%"))
-            ->when($request->proprietario_id, fn ($q, $v) => $q->where('proprietario_id', $v));
+            ->when($verExcluidos, fn ($q) => $q->onlyTrashed());
+        $filtrosEscopo($query);
+        $query->when($request->status, fn ($q, $v) => $q->where('status', $v));
 
         $ordenarPor = in_array($request->ordenar_por, ['titulo', 'codigo', 'created_at', 'status', 'cidade'])
             ? $request->ordenar_por
@@ -43,9 +51,24 @@ class ImovelController extends Controller
 
         $imoveis = $query->orderBy($ordenarPor, $direcao)->paginate(20)->withQueryString();
 
+        $indicadoresQuery = Imovel::query();
+        $filtrosEscopo($indicadoresQuery);
+        $indicadores = $indicadoresQuery
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         return Inertia::render('Admin/Imoveis/Index', [
             'imoveis'      => $imoveis,
-            'filtros'      => $request->only(['busca', 'tipo', 'finalidade', 'status', 'cidade', 'bairro', 'proprietario_id', 'ordenar_por', 'direcao']),
+            'filtros'      => $request->only(['busca', 'tipo', 'finalidade', 'status', 'cidade', 'bairro', 'proprietario_id', 'ordenar_por', 'direcao', 'excluidos']),
+            'indicadores'  => [
+                'total'         => $indicadores->sum(),
+                'disponivel'    => $indicadores->get(Imovel::STATUS_DISPONIVEL, 0),
+                'reservado'     => $indicadores->get(Imovel::STATUS_RESERVADO, 0),
+                'alugado'       => $indicadores->get(Imovel::STATUS_ALUGADO, 0),
+                'em_manutencao' => $indicadores->get(Imovel::STATUS_MANUTENCAO, 0),
+                'inativo'       => $indicadores->get(Imovel::STATUS_INATIVO, 0),
+            ],
             'proprietarios' => Cliente::with('papeis')
                 ->whereHas('papeis', fn ($q) => $q->where('papel', 'proprietario'))
                 ->orderBy('nome')
@@ -82,7 +105,8 @@ class ImovelController extends Controller
         $imovel->load(['proprietario', 'corretor', 'caracteristicas', 'dadosComerciais', 'fotos', 'documentos']);
 
         return Inertia::render('Admin/Imoveis/Show', [
-            'imovel' => $imovel,
+            'imovel'     => $imovel,
+            'historicos' => $imovel->historicos()->with('usuario:id,name')->paginate(20, pageName: 'historico_page'),
         ]);
     }
 
@@ -101,7 +125,9 @@ class ImovelController extends Controller
 
     public function update(UpdateImovelRequest $request, Imovel $imovel): RedirectResponse
     {
-        $this->service->atualizar($imovel, $request->validated());
+        $this->authorize('update', $imovel);
+
+        $this->service->atualizar($imovel, $request->validated(), $request->user()->id);
 
         return redirect()
             ->route('imoveis.show', $imovel)
@@ -116,9 +142,29 @@ class ImovelController extends Controller
             'status' => ['required', 'in:disponivel,reservado,alugado,em_manutencao,inativo'],
         ]);
 
-        $this->service->alterarStatus($imovel, $request->status);
+        $this->service->alterarStatus($imovel, $request->status, $request->user()->id);
 
         return back()->with('status', 'Status do imóvel atualizado com sucesso.');
+    }
+
+    public function destroy(Request $request, Imovel $imovel): RedirectResponse
+    {
+        $this->authorize('delete', $imovel);
+
+        $this->service->excluir($imovel, $request->user()->id);
+
+        return redirect()
+            ->route('imoveis.index')
+            ->with('status', 'Imóvel excluído com sucesso.');
+    }
+
+    public function restore(Request $request, Imovel $imovel): RedirectResponse
+    {
+        $this->authorize('restore', $imovel);
+
+        $this->service->restaurar($imovel, $request->user()->id);
+
+        return back()->with('status', 'Imóvel restaurado com sucesso.');
     }
 
     private function proprietarios()

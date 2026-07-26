@@ -2,6 +2,7 @@ export type StatusContrato =
     | 'rascunho'
     | 'aguardando_assinatura'
     | 'ativo'
+    | 'vencido'
     | 'encerrado'
     | 'rescindido'
     | 'cancelado';
@@ -21,7 +22,9 @@ export type StatusCaucao = 'recebida' | 'devolvida' | 'retida_parcialmente' | 'r
 export type BaseCalculoRescisao = 'alugueis_restantes' | 'valor_fixo';
 
 export type TipoDocumentoContrato = 'contrato_assinado' | 'laudo_vistoria' | 'comprovante_caucao' | 'outros';
-export type ParteRequerente = 'proprietario' | 'inquilino' | 'ambos';
+export type SolicitadoPorRescisao = 'locatario' | 'locador' | 'imobiliaria' | 'acordo';
+export type DestinoImovelRescisao = 'disponivel' | 'inativo';
+export type AcaoParcelasFuturas = 'cancelar_parcelas_futuras' | 'manter_parcelas_futuras';
 
 export type TipoEventoHistorico =
     | 'criacao'
@@ -31,13 +34,18 @@ export type TipoEventoHistorico =
     | 'rescisao'
     | 'alteracao'
     | 'documento_adicionado'
-    | 'assinatura_pendente';
+    | 'assinatura_pendente'
+    | 'renovado_para'
+    | 'criacao_por_renovacao'
+    | 'repasse_cancelado';
 
 export interface ContratoEncargo {
     id: string;
     contrato_id: string;
     tipo_encargo: TipoEncargo;
     responsavel: ResponsavelEncargo;
+    valor_estimado: string | null;
+    cobrar_junto_aluguel: boolean;
     observacao: string | null;
 }
 
@@ -47,11 +55,13 @@ export interface ContratoCaucao {
     possui_caucao: boolean;
     tipo_caucao: TipoCaucao | null;
     valor_caucao: string | null;
+    saldo_atual: string;
     data_recebimento_caucao: string | null;
-    status_caucao: StatusCaucao;
+    status_caucao: StatusCaucao | null;
     valor_devolvido: string | null;
     data_devolucao_caucao: string | null;
     observacao_caucao: string | null;
+    movimentacoes?: import('./caucao').MovimentacaoCaucao[];
 }
 
 export interface ContratoMultas {
@@ -60,9 +70,43 @@ export interface ContratoMultas {
     possui_multa_atraso: boolean;
     percentual_multa_atraso: string | null;
     valor_juros_dia: string | null;
+    dias_tolerancia_atraso: number | null;
     possui_multa_rescisao: boolean;
     percentual_multa_rescisao: string | null;
     base_calculo_rescisao: BaseCalculoRescisao | null;
+}
+
+export interface ContratoRescisao {
+    id: string;
+    contrato_id: string;
+    data_rescisao: string;
+    motivo: string;
+    solicitado_por: SolicitadoPorRescisao;
+    meses_restantes: number | null;
+    valor_multa_rescisao: string | null;
+    valor_desconto: string | null;
+    valor_final_multa: string | null;
+    debitos_em_aberto: string;
+    valor_caucao_retida: string | null;
+    valor_caucao_abatida: string | null;
+    valor_caucao_devolvida: string | null;
+    destino_imovel: DestinoImovelRescisao;
+    acao_parcelas_futuras: AcaoParcelasFuturas;
+    observacoes: string | null;
+}
+
+export interface ContratoRenovacao {
+    id: string;
+    contrato_original_id: string;
+    novo_contrato_id: string;
+    data_renovacao: string;
+    valor_aluguel_anterior: string;
+    valor_aluguel_novo: string;
+    manter_encargos: boolean;
+    manter_regras_multa: boolean;
+    gerar_novas_parcelas: boolean;
+    caucao_acao: 'manter' | 'devolver' | 'complementar' | null;
+    observacoes: string | null;
 }
 
 export interface ContratoDocumento {
@@ -121,6 +165,7 @@ export interface ContratoLocacao {
     proprietario_id: string;
     inquilino_id: string;
     corretor_id: string | null;
+    contrato_anterior_id: string | null;
     criado_por: string;
     data_inicio: string;
     data_fim: string | null;
@@ -132,6 +177,8 @@ export interface ContratoLocacao {
     data_primeiro_reajuste: string | null;
     tipo_taxa_administracao: TipoTaxaAdministracao;
     valor_taxa_administracao: string;
+    gerar_parcelas_automaticamente: boolean;
+    quantidade_parcelas: number | null;
     dia_repasse: number | null;
     forma_repasse: FormaRepasse;
     banco: string | null;
@@ -141,9 +188,6 @@ export interface ContratoLocacao {
     pix_key: string | null;
     data_encerramento: string | null;
     motivo_encerramento: string | null;
-    data_rescisao: string | null;
-    motivo_rescisao: string | null;
-    parte_requerente: ParteRequerente | null;
     observacoes: string | null;
     permite_edicao_completa: boolean;
     created_at: string;
@@ -158,6 +202,9 @@ export interface ContratoLocacao {
     multas?: ContratoMultas;
     documentos?: ContratoDocumento[];
     historicos?: ContratoHistorico[];
+    parcelas?: import('./parcela').ParcelaAluguel[];
+    repasses?: import('./repasse').RepasseProprietario[];
+    rescisao?: ContratoRescisao;
 }
 
 export interface ContratoFiltros {
@@ -211,8 +258,17 @@ export interface FormularioContratoData {
     pix_key: string;
     // Observações
     observacoes: string;
+    // Parcelas
+    gerar_parcelas_automaticamente: boolean;
+    quantidade_parcelas: string;
     // Encargos
-    encargos: { tipo_encargo: TipoEncargo; responsavel: ResponsavelEncargo; observacao: string }[];
+    encargos: {
+        tipo_encargo: TipoEncargo;
+        responsavel: ResponsavelEncargo;
+        valor_estimado: string;
+        cobrar_junto_aluguel: boolean;
+        observacao: string;
+    }[];
     // Caução
     caucao: {
         possui_caucao: boolean;
@@ -225,6 +281,7 @@ export interface FormularioContratoData {
         possui_multa_atraso: boolean;
         percentual_multa_atraso: string;
         valor_juros_dia: string;
+        dias_tolerancia_atraso: string;
         possui_multa_rescisao: boolean;
         percentual_multa_rescisao: string;
         base_calculo_rescisao: BaseCalculoRescisao | '';

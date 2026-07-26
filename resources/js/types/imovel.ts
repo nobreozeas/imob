@@ -1,7 +1,6 @@
 export type TipoImovel = 'apartamento' | 'casa' | 'comercial' | 'sala' | 'galpao' | 'terreno' | 'rural' | 'outro';
 export type FinalidadeImovel = 'aluguel' | 'venda' | 'aluguel_venda';
 export type StatusImovel = 'disponivel' | 'reservado' | 'alugado' | 'em_manutencao' | 'inativo';
-export type ResponsavelCusto = 'proprietario' | 'inquilino';
 
 export interface ImovelCaracteristicas {
     id: string;
@@ -28,10 +27,6 @@ export interface ImovelDadosComerciais {
     valor_condominio: string | null;
     valor_iptu: string | null;
     condominio_incluso: boolean;
-    responsavel_iptu: ResponsavelCusto | null;
-    responsavel_agua: ResponsavelCusto | null;
-    responsavel_energia: ResponsavelCusto | null;
-    responsavel_condominio: ResponsavelCusto | null;
     valor_caucao_sugerido: string | null;
     observacoes_comerciais: string | null;
 }
@@ -53,6 +48,37 @@ export interface ImovelDocumento {
     nome_original: string;
     tipo: string | null;
     url: string;
+}
+
+export type TipoEventoHistoricoImovel =
+    | 'criacao'
+    | 'atualizacao'
+    | 'alteracao_status'
+    | 'foto_adicionada'
+    | 'foto_removida'
+    | 'documento_adicionado'
+    | 'documento_removido'
+    | 'exclusao'
+    | 'restauracao';
+
+export interface ImovelHistorico {
+    id: string;
+    imovel_id: string;
+    tipo_evento: TipoEventoHistoricoImovel;
+    descricao: string;
+    dados_anteriores: Record<string, unknown> | null;
+    dados_novos: Record<string, unknown> | null;
+    usuario: { id: string; name: string } | null;
+    created_at: string;
+}
+
+export interface ImovelIndicadores {
+    total: number;
+    disponivel: number;
+    reservado: number;
+    alugado: number;
+    em_manutencao: number;
+    inativo: number;
 }
 
 export interface ProprietarioOpcao {
@@ -94,6 +120,7 @@ export interface Imovel {
     foto_principal: ImovelFoto | null;
     created_at: string;
     updated_at: string;
+    deleted_at: string | null;
 }
 
 export interface ImovelFiltros {
@@ -106,10 +133,22 @@ export interface ImovelFiltros {
     proprietario_id?: string;
     ordenar_por?: string;
     direcao?: 'asc' | 'desc';
+    excluidos?: boolean;
 }
 
 export interface ImovelPaginado {
     data: Imovel[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+
+export interface ImovelHistoricoPaginado {
+    data: ImovelHistorico[];
     current_page: number;
     last_page: number;
     per_page: number;
@@ -160,10 +199,6 @@ export interface FormularioImovelData {
         valor_condominio: string;
         valor_iptu: string;
         condominio_incluso: boolean;
-        responsavel_iptu: ResponsavelCusto | '';
-        responsavel_agua: ResponsavelCusto | '';
-        responsavel_energia: ResponsavelCusto | '';
-        responsavel_condominio: ResponsavelCusto | '';
         valor_caucao_sugerido: string;
         observacoes_comerciais: string;
     };

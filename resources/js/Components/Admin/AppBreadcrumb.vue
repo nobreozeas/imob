@@ -34,11 +34,11 @@ const crumbs = computed(() => {
     <nav class="breadcrumbs text-sm">
         <ul>
             <li>
-                <Link :href="route('dashboard')">Início</Link>
+                <Link :href="route('dashboard')" class="text-base-content/50 hover:text-primary">Início</Link>
             </li>
             <li v-for="crumb in crumbs" :key="crumb.href">
-                <Link v-if="!crumb.isLast" :href="crumb.href">{{ crumb.label }}</Link>
-                <span v-else class="text-base-content/60">{{ crumb.label }}</span>
+                <Link v-if="!crumb.isLast" :href="crumb.href" class="text-base-content/50 hover:text-primary">{{ crumb.label }}</Link>
+                <span v-else class="font-medium text-base-content">{{ crumb.label }}</span>
             </li>
         </ul>
     </nav>

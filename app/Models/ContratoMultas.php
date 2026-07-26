@@ -17,6 +17,7 @@ class ContratoMultas extends Model
         'possui_multa_atraso',
         'percentual_multa_atraso',
         'valor_juros_dia',
+        'dias_tolerancia_atraso',
         'possui_multa_rescisao',
         'percentual_multa_rescisao',
         'base_calculo_rescisao',
@@ -27,6 +28,7 @@ class ContratoMultas extends Model
         'possui_multa_rescisao'    => 'boolean',
         'percentual_multa_atraso'  => 'decimal:2',
         'valor_juros_dia'          => 'decimal:4',
+        'dias_tolerancia_atraso'   => 'integer',
         'percentual_multa_rescisao' => 'decimal:2',
     ];
 

@@ -19,6 +19,7 @@ class ContratoLocacao extends Model
     const STATUS_RASCUNHO              = 'rascunho';
     const STATUS_AGUARDANDO_ASSINATURA = 'aguardando_assinatura';
     const STATUS_ATIVO                 = 'ativo';
+    const STATUS_VENCIDO               = 'vencido';
     const STATUS_ENCERRADO             = 'encerrado';
     const STATUS_RESCINDIDO            = 'rescindido';
     const STATUS_CANCELADO             = 'cancelado';
@@ -48,6 +49,7 @@ class ContratoLocacao extends Model
         'proprietario_id',
         'inquilino_id',
         'corretor_id',
+        'contrato_anterior_id',
         'criado_por',
         'data_inicio',
         'data_fim',
@@ -59,6 +61,8 @@ class ContratoLocacao extends Model
         'data_primeiro_reajuste',
         'tipo_taxa_administracao',
         'valor_taxa_administracao',
+        'gerar_parcelas_automaticamente',
+        'quantidade_parcelas',
         'dia_repasse',
         'forma_repasse',
         'banco',
@@ -68,9 +72,6 @@ class ContratoLocacao extends Model
         'pix_key',
         'data_encerramento',
         'motivo_encerramento',
-        'data_rescisao',
-        'motivo_rescisao',
-        'parte_requerente',
         'observacoes',
     ];
 
@@ -81,13 +82,14 @@ class ContratoLocacao extends Model
         'data_fim'               => 'date:Y-m-d',
         'data_primeiro_reajuste' => 'date:Y-m-d',
         'data_encerramento'      => 'date:Y-m-d',
-        'data_rescisao'          => 'date:Y-m-d',
         'valor_aluguel'          => 'decimal:2',
         'valor_taxa_administracao' => 'decimal:2',
         'dia_vencimento'         => 'integer',
         'dia_repasse'            => 'integer',
         'duracao_meses'          => 'integer',
         'periodicidade_reajuste' => 'integer',
+        'gerar_parcelas_automaticamente' => 'boolean',
+        'quantidade_parcelas'    => 'integer',
     ];
 
     public function imovel(): BelongsTo
@@ -138,6 +140,31 @@ class ContratoLocacao extends Model
     public function historicos(): HasMany
     {
         return $this->hasMany(ContratoHistorico::class, 'contrato_id')->orderBy('created_at', 'desc');
+    }
+
+    public function parcelas(): HasMany
+    {
+        return $this->hasMany(ParcelaAluguel::class, 'contrato_id')->orderBy('ano_referencia')->orderBy('mes_referencia');
+    }
+
+    public function repasses(): HasMany
+    {
+        return $this->hasMany(RepasseProprietario::class, 'contrato_id');
+    }
+
+    public function rescisao(): HasOne
+    {
+        return $this->hasOne(ContratoRescisao::class, 'contrato_id');
+    }
+
+    public function renovacoes(): HasMany
+    {
+        return $this->hasMany(ContratoRenovacao::class, 'contrato_original_id');
+    }
+
+    public function contratoAnterior(): BelongsTo
+    {
+        return $this->belongsTo(ContratoLocacao::class, 'contrato_anterior_id');
     }
 
     public function getPermiteEdicaoCompletaAttribute(): bool

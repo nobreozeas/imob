@@ -7,9 +7,9 @@ import AppTopbar from '@/Components/Admin/AppTopbar.vue';
     <div class="drawer lg:drawer-open">
         <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
 
-        <div class="drawer-content flex flex-col min-h-screen">
+        <div class="drawer-content flex min-h-screen flex-col">
             <AppTopbar />
-            <main class="flex-1 p-6 bg-base-200 overflow-auto">
+            <main class="flex-1 overflow-auto bg-base-200 p-6 lg:p-8">
                 <slot />
             </main>
         </div>

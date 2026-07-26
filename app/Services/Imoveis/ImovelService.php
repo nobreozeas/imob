@@ -3,15 +3,16 @@
 namespace App\Services\Imoveis;
 
 use App\Models\Imovel;
-use App\Models\ImovelDocumento;
-use App\Models\ImovelFoto;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class ImovelService
 {
+    public function __construct(
+        private ImovelMidiaService $midia,
+        private ImovelHistoricoService $historico,
+    ) {}
+
     public function criar(array $dados): Imovel
     {
         return DB::transaction(function () use ($dados) {
@@ -42,16 +43,23 @@ class ImovelService
             $imovel->caracteristicas()->create($this->dadosCaracteristicas($dados));
             $imovel->dadosComerciais()->create($this->dadosComerciaisData($dados));
 
-            $this->sincronizarFotos($imovel, $dados);
-            $this->sincronizarDocumentos($imovel, $dados);
+            $this->midia->sincronizarFotos($imovel, $dados, $dados['criado_por']);
+            $this->midia->sincronizarDocumentos($imovel, $dados, $dados['criado_por']);
+
+            $this->historico->registrar(
+                $imovel,
+                'criacao',
+                "Imóvel {$imovel->codigo} cadastrado.",
+                usuarioId: $dados['criado_por'],
+            );
 
             return $imovel;
         });
     }
 
-    public function atualizar(Imovel $imovel, array $dados): Imovel
+    public function atualizar(Imovel $imovel, array $dados, ?string $usuarioId = null): Imovel
     {
-        return DB::transaction(function () use ($imovel, $dados) {
+        return DB::transaction(function () use ($imovel, $dados, $usuarioId) {
             $imovel->update([
                 'codigo'          => $dados['codigo'] ?? $imovel->codigo,
                 'titulo'          => $dados['titulo'],
@@ -81,14 +89,21 @@ class ImovelService
                 $this->dadosComerciaisData($dados)
             );
 
-            $this->sincronizarFotos($imovel, $dados);
-            $this->sincronizarDocumentos($imovel, $dados);
+            $this->midia->sincronizarFotos($imovel, $dados, $usuarioId);
+            $this->midia->sincronizarDocumentos($imovel, $dados, $usuarioId);
+
+            $this->historico->registrar(
+                $imovel,
+                'atualizacao',
+                "Imóvel {$imovel->codigo} atualizado.",
+                usuarioId: $usuarioId,
+            );
 
             return $imovel->fresh();
         });
     }
 
-    public function alterarStatus(Imovel $imovel, string $status): void
+    public function alterarStatus(Imovel $imovel, string $status, ?string $usuarioId = null): void
     {
         if ($status === Imovel::STATUS_DISPONIVEL && $imovel->temContratoAtivo()) {
             throw ValidationException::withMessages([
@@ -96,7 +111,48 @@ class ImovelService
             ]);
         }
 
+        $statusAnterior = $imovel->status;
+
         $imovel->update(['status' => $status]);
+
+        $this->historico->registrar(
+            $imovel,
+            'alteracao_status',
+            "Status alterado de \"{$statusAnterior}\" para \"{$status}\".",
+            ['status' => $statusAnterior],
+            ['status' => $status],
+            $usuarioId,
+        );
+    }
+
+    public function excluir(Imovel $imovel, ?string $usuarioId = null): void
+    {
+        if ($imovel->temContratoAtivo()) {
+            throw ValidationException::withMessages([
+                'imovel' => 'Não é possível excluir um imóvel com contrato ativo.',
+            ]);
+        }
+
+        $imovel->delete();
+
+        $this->historico->registrar(
+            $imovel,
+            'exclusao',
+            "Imóvel {$imovel->codigo} excluído.",
+            usuarioId: $usuarioId,
+        );
+    }
+
+    public function restaurar(Imovel $imovel, ?string $usuarioId = null): void
+    {
+        $imovel->restore();
+
+        $this->historico->registrar(
+            $imovel,
+            'restauracao',
+            "Imóvel {$imovel->codigo} restaurado.",
+            usuarioId: $usuarioId,
+        );
     }
 
     private function gerarCodigo(): string
@@ -115,86 +171,6 @@ class ImovelService
         }
 
         return $prefixo . str_pad($seq, 4, '0', STR_PAD_LEFT);
-    }
-
-    private function sincronizarFotos(Imovel $imovel, array $dados): void
-    {
-        // Remove fotos marcadas para remoção
-        if (!empty($dados['fotos_remover'])) {
-            $fotos = ImovelFoto::whereIn('id', $dados['fotos_remover'])
-                ->where('imovel_id', $imovel->id)
-                ->get();
-
-            foreach ($fotos as $foto) {
-                Storage::disk('public')->delete($foto->caminho);
-                $foto->delete();
-            }
-        }
-
-        // Salva novas fotos
-        if (!empty($dados['fotos_novas'])) {
-            $pasta = "imoveis/{$imovel->id}/fotos";
-            $ordem = $imovel->fotos()->max('ordem') ?? 0;
-
-            foreach ($dados['fotos_novas'] as $arquivo) {
-                if ($arquivo instanceof UploadedFile) {
-                    $caminho = $arquivo->store($pasta, 'public');
-                    $ordem++;
-                    $imovel->fotos()->create([
-                        'caminho'      => $caminho,
-                        'nome_original' => $arquivo->getClientOriginalName(),
-                        'is_principal' => false,
-                        'ordem'        => $ordem,
-                    ]);
-                }
-            }
-        }
-
-        // Atualiza foto principal
-        if (!empty($dados['foto_principal_id'])) {
-            $imovel->fotos()->update(['is_principal' => false]);
-            $imovel->fotos()
-                ->where('id', $dados['foto_principal_id'])
-                ->update(['is_principal' => true]);
-        } elseif ($imovel->fotos()->where('is_principal', true)->doesntExist()) {
-            // Define a primeira foto como principal automaticamente
-            $primeira = $imovel->fotos()->orderBy('ordem')->first();
-            if ($primeira) {
-                $primeira->update(['is_principal' => true]);
-            }
-        }
-    }
-
-    private function sincronizarDocumentos(Imovel $imovel, array $dados): void
-    {
-        // Remove documentos marcados para remoção
-        if (!empty($dados['documentos_remover'])) {
-            $documentos = ImovelDocumento::whereIn('id', $dados['documentos_remover'])
-                ->where('imovel_id', $imovel->id)
-                ->get();
-
-            foreach ($documentos as $doc) {
-                Storage::disk('public')->delete($doc->caminho);
-                $doc->delete();
-            }
-        }
-
-        // Salva novos documentos
-        if (!empty($dados['documentos_novos'])) {
-            $pasta = "imoveis/{$imovel->id}/documentos";
-            $tipos = $dados['tipos_documentos'] ?? [];
-
-            foreach ($dados['documentos_novos'] as $index => $arquivo) {
-                if ($arquivo instanceof UploadedFile) {
-                    $caminho = $arquivo->store($pasta, 'public');
-                    $imovel->documentos()->create([
-                        'caminho'      => $caminho,
-                        'nome_original' => $arquivo->getClientOriginalName(),
-                        'tipo'         => $tipos[$index] ?? null,
-                    ]);
-                }
-            }
-        }
     }
 
     private function dadosCaracteristicas(array $dados): array
@@ -223,10 +199,6 @@ class ImovelService
             'valor_condominio'       => $dados['dados_comerciais']['valor_condominio'] ?? null,
             'valor_iptu'             => $dados['dados_comerciais']['valor_iptu'] ?? null,
             'condominio_incluso'     => $dados['dados_comerciais']['condominio_incluso'] ?? false,
-            'responsavel_iptu'       => $dados['dados_comerciais']['responsavel_iptu'] ?? null,
-            'responsavel_agua'       => $dados['dados_comerciais']['responsavel_agua'] ?? null,
-            'responsavel_energia'    => $dados['dados_comerciais']['responsavel_energia'] ?? null,
-            'responsavel_condominio' => $dados['dados_comerciais']['responsavel_condominio'] ?? null,
             'valor_caucao_sugerido'  => $dados['dados_comerciais']['valor_caucao_sugerido'] ?? null,
             'observacoes_comerciais' => $dados['dados_comerciais']['observacoes_comerciais'] ?? null,
         ];

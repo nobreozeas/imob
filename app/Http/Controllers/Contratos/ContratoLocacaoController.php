@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Contratos;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Contratos\StoreContratoRequest;
+use App\Http\Requests\Contratos\StoreRescisaoContratoRequest;
 use App\Http\Requests\Contratos\UpdateContratoRequest;
 use App\Models\Cliente;
 use App\Models\ContratoDocumento;
@@ -14,6 +15,7 @@ use App\Services\Contratos\ContratoDocumentoService;
 use App\Services\Contratos\ContratoHistoricoService;
 use App\Services\Contratos\ContratoLocacaoService;
 use App\Services\Contratos\ContratoStatusService;
+use App\Services\Contratos\RescisaoContratoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,6 +28,7 @@ class ContratoLocacaoController extends Controller
         private ContratoStatusService $statusService,
         private ContratoDocumentoService $documentoService,
         private ContratoHistoricoService $historicoService,
+        private RescisaoContratoService $rescisaoService,
     ) {}
 
     public function index(Request $request): Response
@@ -77,7 +80,12 @@ class ContratoLocacaoController extends Controller
     {
         $this->authorize('view', $contrato);
 
-        $contrato->load(['imovel', 'proprietario', 'inquilino', 'corretor', 'criadoPor', 'encargos', 'caucao', 'multas', 'documentos.criador', 'historicos.usuario']);
+        $contrato->load([
+            'imovel', 'proprietario', 'inquilino', 'corretor', 'criadoPor',
+            'encargos', 'caucao.movimentacoes.criador', 'multas',
+            'documentos.criador', 'historicos.usuario',
+            'parcelas', 'repasses.parcela',
+        ]);
 
         return Inertia::render('Admin/Contratos/Show', [
             'contrato' => $contrato,
@@ -148,20 +156,11 @@ class ContratoLocacaoController extends Controller
         return back()->with('status', 'Contrato encerrado com sucesso.');
     }
 
-    public function rescindir(Request $request, ContratoLocacao $contrato): RedirectResponse
+    public function rescindir(StoreRescisaoContratoRequest $request, ContratoLocacao $contrato): RedirectResponse
     {
         $this->authorize('rescindir', $contrato);
 
-        $dados = $request->validate([
-            'data_rescisao'      => ['required', 'date'],
-            'motivo_rescisao'    => ['nullable', 'string'],
-            'parte_requerente'   => ['nullable', 'in:proprietario,inquilino,ambos'],
-            'valor_devolvido'    => ['nullable', 'numeric', 'min:0'],
-            'data_devolucao_caucao' => ['nullable', 'date'],
-            'observacao_caucao'  => ['nullable', 'string'],
-        ]);
-
-        $this->statusService->rescindir($contrato, $dados, $request->user()->id);
+        $this->rescisaoService->rescindir($contrato, $request->validated(), $request->user()->id);
 
         return back()->with('status', 'Contrato rescindido.');
     }

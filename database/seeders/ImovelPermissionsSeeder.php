@@ -17,6 +17,10 @@ class ImovelPermissionsSeeder extends Seeder
             'imoveis.create',
             'imoveis.update',
             'imoveis.alterar-status',
+            'imoveis.destroy',
+            'imoveis.restore',
+            'imoveis.gerenciar-fotos',
+            'imoveis.gerenciar-documentos',
         ];
 
         foreach ($permissoes as $permissao) {

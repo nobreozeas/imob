@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ContratoCaucao extends Model
 {
@@ -12,11 +13,17 @@ class ContratoCaucao extends Model
 
     protected $table = 'contrato_caucoes';
 
+    const STATUS_RECEBIDA = 'recebida';
+    const STATUS_DEVOLVIDA = 'devolvida';
+    const STATUS_RETIDA_PARCIALMENTE = 'retida_parcialmente';
+    const STATUS_RETIDA_TOTALMENTE = 'retida_totalmente';
+
     protected $fillable = [
         'contrato_id',
         'possui_caucao',
         'tipo_caucao',
         'valor_caucao',
+        'saldo_atual',
         'data_recebimento_caucao',
         'status_caucao',
         'valor_devolvido',
@@ -27,6 +34,7 @@ class ContratoCaucao extends Model
     protected $casts = [
         'possui_caucao'          => 'boolean',
         'valor_caucao'           => 'decimal:2',
+        'saldo_atual'            => 'decimal:2',
         'valor_devolvido'        => 'decimal:2',
         'data_recebimento_caucao' => 'date:Y-m-d',
         'data_devolucao_caucao'  => 'date:Y-m-d',
@@ -35,5 +43,10 @@ class ContratoCaucao extends Model
     public function contrato(): BelongsTo
     {
         return $this->belongsTo(ContratoLocacao::class, 'contrato_id');
+    }
+
+    public function movimentacoes(): HasMany
+    {
+        return $this->hasMany(MovimentacaoCaucao::class, 'caucao_contrato_id')->orderBy('data_movimentacao', 'desc');
     }
 }

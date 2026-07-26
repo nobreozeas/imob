@@ -19,10 +19,6 @@ class ImovelDadosComerciais extends Model
         'valor_condominio',
         'valor_iptu',
         'condominio_incluso',
-        'responsavel_iptu',
-        'responsavel_agua',
-        'responsavel_energia',
-        'responsavel_condominio',
         'valor_caucao_sugerido',
         'observacoes_comerciais',
     ];

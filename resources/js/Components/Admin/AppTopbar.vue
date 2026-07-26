@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePage, router } from '@inertiajs/vue3';
-import { LogOut } from 'lucide-vue-next';
+import { LogOut, PanelLeft } from 'lucide-vue-next';
 import AppBreadcrumb from '@/Components/Admin/AppBreadcrumb.vue';
 
 const page = usePage();
@@ -11,18 +11,14 @@ function logout() {
 </script>
 
 <template>
-    <nav class="navbar w-full bg-base-100 border-b border-base-200 sticky top-0 z-30 px-4">
+    <nav class="navbar sticky top-0 z-30 h-16 w-full border-b border-base-300 bg-base-100 px-4">
         <!-- Botão toggle do sidebar (DaisyUI label) -->
         <label
             for="admin-drawer"
             aria-label="alternar menu"
             class="btn btn-square btn-ghost btn-sm"
         >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor" class="inline-block size-5">
-                <path d="M4 4m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z"></path>
-                <path d="M9 4v16"></path>
-                <path d="M14 10l2 2l-2 2"></path>
-            </svg>
+            <PanelLeft class="w-5 h-5" />
         </label>
 
         <!-- Breadcrumb -->
@@ -32,7 +28,7 @@ function logout() {
 
         <!-- Usuário + Logout -->
         <div class="flex items-center gap-3">
-            <span class="text-sm text-base-content/70 hidden sm:inline">
+            <span class="hidden text-sm text-base-content/70 sm:inline">
                 {{ page.props.auth?.user?.name }}
             </span>
             <button class="btn btn-ghost btn-sm gap-2" @click="logout">

@@ -26,6 +26,12 @@ class HandleInertiaRequests extends Middleware
                     'status' => $request->user()->status,
                     'deve_alterar_senha' => $request->user()->deve_alterar_senha,
                 ] : null,
+                'permissions' => $request->user()
+                    ? $request->user()->getAllPermissions()->pluck('name')->toArray()
+                    : [],
+                'roles' => $request->user()
+                    ? $request->user()->getRoleNames()->toArray()
+                    : [],
             ],
             'flash' => [
                 'status' => session('status'),

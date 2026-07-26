@@ -21,6 +21,11 @@ class ContratoPermissionsSeeder extends Seeder
             'contratos.encerrar',
             'contratos.rescindir',
             'contratos.documentos',
+            'contratos.registrar-pagamento',
+            'contratos.gerenciar-caucao',
+            'contratos.renovar',
+            'repasses.visualizar',
+            'repasses.marcar-como-pago',
         ];
 
         foreach ($permissoes as $permissao) {

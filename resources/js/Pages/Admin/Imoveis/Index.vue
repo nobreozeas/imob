@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { ImageOff } from 'lucide-vue-next';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
 import AppBreadcrumb from '@/Components/Admin/AppBreadcrumb.vue';
 import BadgeStatus from '@/Components/Imoveis/BadgeStatus.vue';
 import BadgeTipo from '@/Components/Imoveis/BadgeTipo.vue';
 import BadgeFinalidade from '@/Components/Imoveis/BadgeFinalidade.vue';
-import Swal from 'sweetalert2';
-import type { ImovelFiltros, ImovelPaginado, ProprietarioOpcao, StatusImovel } from '@/types/imovel';
+import Swal, { swalClass } from '@/lib/swal';
+import type { ImovelFiltros, ImovelIndicadores, ImovelPaginado, ProprietarioOpcao, StatusImovel } from '@/types/imovel';
 import { useImovelStatus } from '@/composables/useImovelStatus';
 
 defineOptions({ layout: AdminLayout });
@@ -15,12 +16,22 @@ defineOptions({ layout: AdminLayout });
 const props = defineProps<{
     imoveis: ImovelPaginado;
     filtros: ImovelFiltros;
+    indicadores: ImovelIndicadores;
     proprietarios: ProprietarioOpcao[];
 }>();
 
 const page = usePage();
+const auth = (page.props as any).auth;
 const { labelStatus } = useImovelStatus();
 const filtros = ref<ImovelFiltros>({ ...props.filtros });
+
+function podeRestaurar(): boolean {
+    return auth?.permissions?.includes('imoveis.restore');
+}
+
+function podeExcluir(): boolean {
+    return auth?.permissions?.includes('imoveis.destroy');
+}
 
 let debounceTimer: ReturnType<typeof setTimeout>;
 watch(filtros, (val) => {
@@ -54,11 +65,39 @@ async function alterarStatus(imovelId: string, statusAtual: StatusImovel) {
         showCancelButton: true,
         confirmButtonText: 'Alterar',
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#3b82f6',
     });
 
     if (result.isConfirmed && result.value) {
         router.patch(route('imoveis.alterar-status', imovelId), { status: result.value });
+    }
+}
+
+async function excluir(imovelId: string) {
+    const result = await Swal.fire({
+        title: 'Excluir imóvel?',
+        text: 'O imóvel será excluído e poderá ser restaurado depois.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Excluir',
+        cancelButtonText: 'Cancelar',
+        customClass: swalClass('error'),
+    });
+
+    if (result.isConfirmed) {
+        router.delete(route('imoveis.destroy', imovelId));
+    }
+}
+
+async function restaurar(imovelId: string) {
+    const result = await Swal.fire({
+        title: 'Restaurar imóvel?',
+        showCancelButton: true,
+        confirmButtonText: 'Restaurar',
+        cancelButtonText: 'Cancelar',
+    });
+
+    if (result.isConfirmed) {
+        router.patch(route('imoveis.restore', imovelId));
     }
 }
 </script>
@@ -71,6 +110,46 @@ async function alterarStatus(imovelId: string, statusAtual: StatusImovel) {
                 <AppBreadcrumb />
             </div>
             <Link :href="route('imoveis.create')" class="btn btn-primary btn-sm">+ Novo Imóvel</Link>
+        </div>
+
+        <!-- Indicadores -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body py-3 px-4">
+                    <span class="text-xs text-base-content/50">Total</span>
+                    <span class="text-xl font-bold">{{ indicadores.total }}</span>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body py-3 px-4">
+                    <span class="text-xs text-base-content/50">Disponíveis</span>
+                    <span class="text-xl font-bold">{{ indicadores.disponivel }}</span>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body py-3 px-4">
+                    <span class="text-xs text-base-content/50">Alugados</span>
+                    <span class="text-xl font-bold">{{ indicadores.alugado }}</span>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body py-3 px-4">
+                    <span class="text-xs text-base-content/50">Reservados</span>
+                    <span class="text-xl font-bold">{{ indicadores.reservado }}</span>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body py-3 px-4">
+                    <span class="text-xs text-base-content/50">Em Manutenção</span>
+                    <span class="text-xl font-bold">{{ indicadores.em_manutencao }}</span>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body py-3 px-4">
+                    <span class="text-xs text-base-content/50">Inativos</span>
+                    <span class="text-xl font-bold">{{ indicadores.inativo }}</span>
+                </div>
+            </div>
         </div>
 
         <!-- Filtros -->
@@ -109,6 +188,10 @@ async function alterarStatus(imovelId: string, statusAtual: StatusImovel) {
                            placeholder="Filtrar por cidade..."
                            v-model="filtros.cidade" />
                 </div>
+                <label v-if="podeRestaurar()" class="label cursor-pointer justify-start gap-2 mt-2">
+                    <input type="checkbox" class="checkbox checkbox-sm" v-model="filtros.excluidos" />
+                    <span class="label-text">Exibir apenas imóveis excluídos</span>
+                </label>
             </div>
         </div>
 
@@ -137,9 +220,7 @@ async function alterarStatus(imovelId: string, statusAtual: StatusImovel) {
                                  :alt="imovel.titulo"
                                  class="w-12 h-10 object-cover rounded-md" />
                             <div v-else class="w-12 h-10 bg-base-200 rounded-md flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
+                                <ImageOff class="w-5 h-5 text-base-content/30" />
                             </div>
                         </td>
                         <td class="font-mono text-xs">{{ imovel.codigo }}</td>
@@ -165,9 +246,13 @@ async function alterarStatus(imovelId: string, statusAtual: StatusImovel) {
                         <td><BadgeStatus :status="imovel.status" /></td>
                         <td>
                             <div class="flex gap-1">
-                                <Link :href="route('imoveis.show', imovel.id)" class="btn btn-ghost btn-xs">Ver</Link>
-                                <Link :href="route('imoveis.edit', imovel.id)" class="btn btn-ghost btn-xs">Editar</Link>
-                                <button class="btn btn-ghost btn-xs" @click="alterarStatus(imovel.id, imovel.status)">Status</button>
+                                <template v-if="!imovel.deleted_at">
+                                    <Link :href="route('imoveis.show', imovel.id)" class="btn btn-ghost btn-xs">Ver</Link>
+                                    <Link :href="route('imoveis.edit', imovel.id)" class="btn btn-ghost btn-xs">Editar</Link>
+                                    <button class="btn btn-ghost btn-xs" @click="alterarStatus(imovel.id, imovel.status)">Status</button>
+                                    <button v-if="podeExcluir()" class="btn btn-ghost btn-xs text-error" @click="excluir(imovel.id)">Excluir</button>
+                                </template>
+                                <button v-else-if="podeRestaurar()" class="btn btn-ghost btn-xs text-success" @click="restaurar(imovel.id)">Restaurar</button>
                             </div>
                         </td>
                     </tr>

@@ -51,4 +51,19 @@ class ContratoLocacaoPolicy
     {
         return $user->can('contratos.documentos');
     }
+
+    public function registrarPagamento(User $user, ContratoLocacao $contrato): bool
+    {
+        return $user->can('contratos.registrar-pagamento');
+    }
+
+    public function gerenciarCaucao(User $user, ContratoLocacao $contrato): bool
+    {
+        return $user->can('contratos.gerenciar-caucao');
+    }
+
+    public function renovar(User $user, ContratoLocacao $contrato): bool
+    {
+        return $user->can('contratos.renovar');
+    }
 }

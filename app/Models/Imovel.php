@@ -76,6 +76,11 @@ class Imovel extends Model
         return $this->hasMany(ImovelDocumento::class);
     }
 
+    public function historicos(): HasMany
+    {
+        return $this->hasMany(ImovelHistorico::class)->latest('created_at');
+    }
+
     public function proprietario(): BelongsTo
     {
         return $this->belongsTo(Cliente::class, 'proprietario_id');

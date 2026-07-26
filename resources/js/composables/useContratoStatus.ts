@@ -16,6 +16,7 @@ export function useContratoStatus() {
             rascunho: 'Rascunho',
             aguardando_assinatura: 'Aguardando Assinatura',
             ativo: 'Ativo',
+            vencido: 'Vencido',
             encerrado: 'Encerrado',
             rescindido: 'Rescindido',
             cancelado: 'Cancelado',
@@ -28,6 +29,7 @@ export function useContratoStatus() {
             rascunho: 'badge-ghost',
             aguardando_assinatura: 'badge-warning',
             ativo: 'badge-success',
+            vencido: 'badge-error',
             encerrado: 'badge-info',
             rescindido: 'badge-warning',
             cancelado: 'badge-error',
@@ -88,7 +90,8 @@ export function useContratoStatus() {
         return labels[tipo as TipoCaucao] ?? tipo;
     }
 
-    function labelStatusCaucao(status: StatusCaucao): string {
+    function labelStatusCaucao(status: StatusCaucao | null): string {
+        if (!status) return 'Aguardando recebimento';
         const labels: Record<StatusCaucao, string> = {
             recebida: 'Recebida',
             devolvida: 'Devolvida',
@@ -98,7 +101,8 @@ export function useContratoStatus() {
         return labels[status] ?? status;
     }
 
-    function corStatusCaucao(status: StatusCaucao): string {
+    function corStatusCaucao(status: StatusCaucao | null): string {
+        if (!status) return 'badge-ghost';
         const cores: Record<StatusCaucao, string> = {
             recebida: 'badge-warning',
             devolvida: 'badge-success',
@@ -106,6 +110,18 @@ export function useContratoStatus() {
             retida_totalmente: 'badge-error',
         };
         return cores[status] ?? 'badge-ghost';
+    }
+
+    function labelTipoMovimentacaoCaucao(tipo: string): string {
+        const labels: Record<string, string> = {
+            recebimento: 'Recebimento',
+            devolucao: 'Devolução',
+            abatimento: 'Abatimento',
+            retencao_parcial: 'Retenção Parcial',
+            retencao_integral: 'Retenção Integral',
+            ajuste: 'Ajuste',
+        };
+        return labels[tipo] ?? tipo;
     }
 
     function labelTipoEvento(tipo: TipoEventoHistorico): string {
@@ -118,6 +134,9 @@ export function useContratoStatus() {
             alteracao: 'Alteração',
             documento_adicionado: 'Documento Adicionado',
             assinatura_pendente: 'Enviado para Assinatura',
+            renovado_para: 'Renovado',
+            criacao_por_renovacao: 'Criado por Renovação',
+            repasse_cancelado: 'Repasse Cancelado',
         };
         return labels[tipo] ?? tipo;
     }
@@ -132,6 +151,9 @@ export function useContratoStatus() {
             alteracao: '✏️',
             documento_adicionado: '📎',
             assinatura_pendente: '✍️',
+            renovado_para: '🔄',
+            criacao_por_renovacao: '🔄',
+            repasse_cancelado: '🚫',
         };
         return icones[tipo] ?? '•';
     }
@@ -156,6 +178,7 @@ export function useContratoStatus() {
         labelTipoCaucao,
         labelStatusCaucao,
         corStatusCaucao,
+        labelTipoMovimentacaoCaucao,
         labelTipoEvento,
         iconeEvento,
         labelTipoDocumento,

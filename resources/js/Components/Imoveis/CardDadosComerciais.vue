@@ -7,11 +7,6 @@ function formatarMoeda(val: string | null): string {
     if (!val) return '—';
     return parseFloat(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
-
-function labelResponsavel(val: string | null): string {
-    if (!val) return '—';
-    return val === 'proprietario' ? 'Proprietário' : 'Inquilino';
-}
 </script>
 
 <template>
@@ -41,15 +36,6 @@ function labelResponsavel(val: string | null): string {
                 <div>
                     <p class="text-base-content/50">Caução Sugerido</p>
                     <p class="font-medium">{{ formatarMoeda(dadosComerciais.valor_caucao_sugerido) }}</p>
-                </div>
-                <div class="col-span-2 md:col-span-3 border-t border-base-200 pt-3">
-                    <p class="text-base-content/50 mb-2 text-xs uppercase tracking-wide">Responsabilidades</p>
-                    <div class="grid grid-cols-2 gap-2 text-xs">
-                        <div><span class="text-base-content/40">IPTU: </span>{{ labelResponsavel(dadosComerciais.responsavel_iptu) }}</div>
-                        <div><span class="text-base-content/40">Água: </span>{{ labelResponsavel(dadosComerciais.responsavel_agua) }}</div>
-                        <div><span class="text-base-content/40">Energia: </span>{{ labelResponsavel(dadosComerciais.responsavel_energia) }}</div>
-                        <div><span class="text-base-content/40">Condomínio: </span>{{ labelResponsavel(dadosComerciais.responsavel_condominio) }}</div>
-                    </div>
                 </div>
                 <div v-if="dadosComerciais.observacoes_comerciais" class="col-span-2 md:col-span-3">
                     <p class="text-base-content/50">Observações Comerciais</p>

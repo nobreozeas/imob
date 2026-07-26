@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import AdminLayout from '@/Layouts/AdminLayout.vue';
-import AppBreadcrumb from '@/Components/Admin/AppBreadcrumb.vue';
 import BadgeStatus from '@/Components/Contratos/BadgeStatus.vue';
 import type { ContratoPaginado, ContratoFiltros } from '@/types/contrato';
 
@@ -12,6 +11,13 @@ const props = defineProps<{
     contratos: ContratoPaginado;
     filtros: ContratoFiltros;
 }>();
+
+const page = usePage();
+const auth = (page.props as any).auth;
+
+function podeRenovar(): boolean {
+    return auth?.permissions?.includes('contratos.renovar');
+}
 
 const filtros = ref<ContratoFiltros>({ ...props.filtros });
 
@@ -38,13 +44,12 @@ function nomeCliente(c: { nome: string | null; razao_social: string | null; tipo
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-base-content">Contratos de Locação</h1>
-                <AppBreadcrumb />
             </div>
             <Link :href="route('contratos.create')" class="btn btn-primary btn-sm">+ Novo Contrato</Link>
         </div>
 
         <!-- Filtros -->
-        <div class="card bg-base-100 shadow-sm border border-base-200">
+        <div class="card bg-base-100 shadow-sm border border-base-300">
             <div class="card-body py-4">
                 <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     <input
@@ -58,6 +63,7 @@ function nomeCliente(c: { nome: string | null; razao_social: string | null; tipo
                         <option value="rascunho">Rascunho</option>
                         <option value="aguardando_assinatura">Ag. Assinatura</option>
                         <option value="ativo">Ativo</option>
+                        <option value="vencido">Vencido</option>
                         <option value="encerrado">Encerrado</option>
                         <option value="rescindido">Rescindido</option>
                         <option value="cancelado">Cancelado</option>
@@ -79,7 +85,7 @@ function nomeCliente(c: { nome: string | null; razao_social: string | null; tipo
         </div>
 
         <!-- Tabela -->
-        <div class="card bg-base-100 shadow-sm border border-base-200 overflow-x-auto">
+        <div class="card bg-base-100 shadow-sm border border-base-300 overflow-x-auto">
             <table class="table table-sm">
                 <thead>
                     <tr class="bg-base-200/50">
@@ -119,6 +125,11 @@ function nomeCliente(c: { nome: string | null; razao_social: string | null; tipo
                                     :href="route('contratos.edit', contrato.id)"
                                     class="btn btn-ghost btn-xs"
                                 >Editar</Link>
+                                <Link
+                                    v-if="['ativo', 'vencido'].includes(contrato.status) && podeRenovar()"
+                                    :href="route('contratos.show', contrato.id)"
+                                    class="btn btn-ghost btn-xs"
+                                >Renovar</Link>
                             </div>
                         </td>
                     </tr>

@@ -35,5 +35,12 @@ if [ "$RUN_MIGRATIONS" = "true" ]; then
   php artisan migrate --force
 fi
 
+: "${RUN_NPM_DEV:=true}"
+
+if [ "$RUN_NPM_DEV" = "true" ]; then
+  log "Iniciando Vite dev server em background..."
+  npm run dev &
+fi
+
 log "Iniciando processo principal: $*"
 exec "$@"

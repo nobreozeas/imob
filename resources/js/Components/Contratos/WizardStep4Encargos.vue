@@ -16,6 +16,8 @@ onMounted(() => {
         props.form.encargos = tiposEncargo.map(tipo => ({
             tipo_encargo: tipo,
             responsavel: 'nao_se_aplica' as const,
+            valor_estimado: '',
+            cobrar_junto_aluguel: false,
             observacao: '',
         }));
     }
@@ -30,7 +32,7 @@ onMounted(() => {
             <div
                 v-for="(encargo, idx) in form.encargos"
                 :key="encargo.tipo_encargo"
-                class="grid grid-cols-1 md:grid-cols-3 gap-3 py-3 items-center"
+                class="grid grid-cols-1 md:grid-cols-5 gap-3 py-3 items-center"
             >
                 <span class="text-sm font-medium text-base-content">{{ labelTipoEncargo(encargo.tipo_encargo) }}</span>
                 <select v-model="form.encargos[idx].responsavel" class="select select-bordered select-sm w-full">
@@ -38,6 +40,18 @@ onMounted(() => {
                     <option value="proprietario">Proprietário</option>
                     <option value="inquilino">Inquilino</option>
                 </select>
+                <input
+                    v-model="form.encargos[idx].valor_estimado"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    class="input input-bordered input-sm w-full"
+                    placeholder="Valor estimado"
+                />
+                <label class="label cursor-pointer gap-2 justify-start">
+                    <input v-model="form.encargos[idx].cobrar_junto_aluguel" type="checkbox" class="checkbox checkbox-sm" />
+                    <span class="label-text text-sm">Cobrar junto ao aluguel</span>
+                </label>
                 <input
                     v-model="form.encargos[idx].observacao"
                     type="text"

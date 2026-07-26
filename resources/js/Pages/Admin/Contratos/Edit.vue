@@ -36,6 +36,8 @@ const form = useForm<FormularioContratoData>({
     data_primeiro_reajuste: c.data_primeiro_reajuste ? String(c.data_primeiro_reajuste).substring(0, 10) : '',
     tipo_taxa_administracao: c.tipo_taxa_administracao ?? 'percentual',
     valor_taxa_administracao: String(c.valor_taxa_administracao ?? '0'),
+    gerar_parcelas_automaticamente: c.gerar_parcelas_automaticamente ?? true,
+    quantidade_parcelas: String(c.quantidade_parcelas ?? ''),
     dia_repasse: String(c.dia_repasse ?? ''),
     forma_repasse: c.forma_repasse ?? 'pix',
     banco: c.banco ?? '',
@@ -47,6 +49,8 @@ const form = useForm<FormularioContratoData>({
     encargos: (c.encargos ?? []).map(e => ({
         tipo_encargo: e.tipo_encargo,
         responsavel: e.responsavel,
+        valor_estimado: String(e.valor_estimado ?? ''),
+        cobrar_junto_aluguel: e.cobrar_junto_aluguel ?? false,
         observacao: e.observacao ?? '',
     })),
     caucao: {
@@ -61,6 +65,7 @@ const form = useForm<FormularioContratoData>({
         possui_multa_atraso: c.multas?.possui_multa_atraso ?? false,
         percentual_multa_atraso: String(c.multas?.percentual_multa_atraso ?? ''),
         valor_juros_dia: String(c.multas?.valor_juros_dia ?? ''),
+        dias_tolerancia_atraso: String(c.multas?.dias_tolerancia_atraso ?? ''),
         possui_multa_rescisao: c.multas?.possui_multa_rescisao ?? false,
         percentual_multa_rescisao: String(c.multas?.percentual_multa_rescisao ?? ''),
         base_calculo_rescisao: c.multas?.base_calculo_rescisao ?? '',

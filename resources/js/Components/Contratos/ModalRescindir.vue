@@ -15,11 +15,16 @@ const emit = defineEmits<{ (e: 'fechado'): void }>();
 
 const form = useForm({
     data_rescisao: '',
-    motivo_rescisao: '',
-    parte_requerente: 'inquilino' as 'proprietario' | 'inquilino' | 'ambos',
-    valor_devolvido: '',
-    data_devolucao_caucao: '',
-    observacao_caucao: '',
+    motivo: '',
+    solicitado_por: 'locatario' as 'locatario' | 'locador' | 'imobiliaria' | 'acordo',
+    destino_imovel: 'disponivel' as 'disponivel' | 'inativo',
+    acao_parcelas_futuras: 'cancelar_parcelas_futuras' as 'cancelar_parcelas_futuras' | 'manter_parcelas_futuras',
+    valor_desconto: '',
+    valor_caucao_abatida: '',
+    valor_caucao_retida: '',
+    valor_caucao_devolvida: '',
+    motivo_retencao_caucao: '',
+    observacoes: '',
 });
 
 const multaEstimada = computed(() => {
@@ -58,35 +63,65 @@ function submeter() {
                     <p v-if="form.errors.data_rescisao" class="text-error text-sm mt-1">{{ form.errors.data_rescisao }}</p>
                 </div>
                 <div class="form-control">
-                    <label class="label"><span class="label-text">Parte Requerente</span></label>
-                    <select v-model="form.parte_requerente" class="select select-bordered">
-                        <option value="inquilino">Inquilino</option>
-                        <option value="proprietario">Proprietário</option>
-                        <option value="ambos">Ambos</option>
+                    <label class="label"><span class="label-text">Solicitado por *</span></label>
+                    <select v-model="form.solicitado_por" class="select select-bordered">
+                        <option value="locatario">Locatário (inquilino)</option>
+                        <option value="locador">Locador (proprietário)</option>
+                        <option value="imobiliaria">Imobiliária</option>
+                        <option value="acordo">Acordo entre as partes</option>
                     </select>
                 </div>
                 <div class="form-control">
-                    <label class="label"><span class="label-text">Motivo</span></label>
-                    <textarea v-model="form.motivo_rescisao" class="textarea textarea-bordered" rows="3" />
+                    <label class="label"><span class="label-text">Motivo *</span></label>
+                    <textarea v-model="form.motivo" class="textarea textarea-bordered" rows="3" required />
+                    <p v-if="form.errors.motivo" class="text-error text-sm mt-1">{{ form.errors.motivo }}</p>
                 </div>
                 <div v-if="multaEstimada" class="alert alert-warning">
-                    <span class="text-sm">Multa estimada por rescisão: <strong>{{ moeda(multaEstimada) }}</strong> (informativo)</span>
+                    <span class="text-sm">Multa estimada por rescisão: <strong>{{ moeda(multaEstimada) }}</strong> (o valor final é recalculado pelo sistema)</span>
                 </div>
-                <template v-if="caucao?.possui_caucao">
-                    <div class="divider text-sm">Devolução da Caução</div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Desconto sobre a multa</span></label>
+                    <input v-model="form.valor_desconto" type="number" step="0.01" min="0" class="input input-bordered" />
+                </div>
+                <div class="grid grid-cols-2 gap-4">
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Valor Devolvido</span></label>
-                        <input v-model="form.valor_devolvido" type="number" step="0.01" min="0" class="input input-bordered" />
+                        <label class="label"><span class="label-text">Destino do imóvel *</span></label>
+                        <select v-model="form.destino_imovel" class="select select-bordered">
+                            <option value="disponivel">Disponível</option>
+                            <option value="inativo">Inativo</option>
+                        </select>
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Data de Devolução</span></label>
-                        <input v-model="form.data_devolucao_caucao" type="date" class="input input-bordered" />
+                        <label class="label"><span class="label-text">Parcelas futuras *</span></label>
+                        <select v-model="form.acao_parcelas_futuras" class="select select-bordered">
+                            <option value="cancelar_parcelas_futuras">Cancelar</option>
+                            <option value="manter_parcelas_futuras">Manter</option>
+                        </select>
+                    </div>
+                </div>
+                <template v-if="caucao?.possui_caucao && Number(caucao.saldo_atual) > 0">
+                    <div class="divider text-sm">Caução (saldo atual: {{ moeda(Number(caucao.saldo_atual)) }})</div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Abater débitos com a caução</span></label>
+                        <input v-model="form.valor_caucao_abatida" type="number" step="0.01" min="0" class="input input-bordered" />
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Observação</span></label>
-                        <textarea v-model="form.observacao_caucao" class="textarea textarea-bordered" rows="2" />
+                        <label class="label"><span class="label-text">Reter da caução</span></label>
+                        <input v-model="form.valor_caucao_retida" type="number" step="0.01" min="0" class="input input-bordered" />
+                    </div>
+                    <div class="form-control" v-if="form.valor_caucao_retida">
+                        <label class="label"><span class="label-text">Motivo da retenção</span></label>
+                        <textarea v-model="form.motivo_retencao_caucao" class="textarea textarea-bordered" rows="2" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Devolver da caução</span></label>
+                        <input v-model="form.valor_caucao_devolvida" type="number" step="0.01" min="0" class="input input-bordered" />
                     </div>
                 </template>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Observações</span></label>
+                    <textarea v-model="form.observacoes" class="textarea textarea-bordered" rows="2" />
+                </div>
                 <div class="modal-action">
                     <button type="button" class="btn btn-ghost" @click="$emit('fechado')">Cancelar</button>
                     <button type="submit" class="btn btn-error" :disabled="form.processing">

@@ -5,7 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue';
 import AppBreadcrumb from '@/Components/Admin/AppBreadcrumb.vue';
 import BadgePapel from '@/Components/Clientes/BadgePapel.vue';
 import BadgeStatus from '@/Components/Clientes/BadgeStatus.vue';
-import Swal from 'sweetalert2';
+import Swal, { swalClass } from '@/lib/swal';
 import type { Cliente, ClienteFiltros, ClientePaginado } from '@/types/cliente';
 
 defineOptions({ layout: AdminLayout });
@@ -42,7 +42,7 @@ async function confirmarAlterarStatus(cliente: Cliente) {
         showCancelButton: true,
         confirmButtonText: `Sim, ${acao}`,
         cancelButtonText: 'Cancelar',
-        confirmButtonColor: acao === 'ativar' ? '#22c55e' : '#ef4444',
+        customClass: swalClass(acao === 'ativar' ? 'success' : 'error'),
     });
 
     if (result.isConfirmed) {

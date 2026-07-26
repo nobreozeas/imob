@@ -52,10 +52,6 @@ class StoreImovelRequest extends FormRequest
             'dados_comerciais.valor_condominio'       => ['nullable', 'numeric', 'min:0'],
             'dados_comerciais.valor_iptu'             => ['nullable', 'numeric', 'min:0'],
             'dados_comerciais.condominio_incluso'     => ['nullable', 'boolean'],
-            'dados_comerciais.responsavel_iptu'       => ['nullable', Rule::in(['proprietario', 'inquilino'])],
-            'dados_comerciais.responsavel_agua'       => ['nullable', Rule::in(['proprietario', 'inquilino'])],
-            'dados_comerciais.responsavel_energia'    => ['nullable', Rule::in(['proprietario', 'inquilino'])],
-            'dados_comerciais.responsavel_condominio' => ['nullable', Rule::in(['proprietario', 'inquilino'])],
             'dados_comerciais.valor_caucao_sugerido'  => ['nullable', 'numeric', 'min:0'],
             'dados_comerciais.observacoes_comerciais' => ['nullable', 'string'],
             // Fotos e documentos

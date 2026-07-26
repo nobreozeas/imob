@@ -16,7 +16,14 @@ class ContratoEncargo extends Model
         'contrato_id',
         'tipo_encargo',
         'responsavel',
+        'valor_estimado',
+        'cobrar_junto_aluguel',
         'observacao',
+    ];
+
+    protected $casts = [
+        'valor_estimado' => 'decimal:2',
+        'cobrar_junto_aluguel' => 'boolean',
     ];
 
     public function contrato(): BelongsTo
